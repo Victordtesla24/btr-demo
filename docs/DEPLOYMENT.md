@@ -35,6 +35,7 @@ Render offers a free tier with 512MB RAM, suitable for this prototype.
      ```bash
      pip install --upgrade pip
      pip install -r requirements.txt
+     cd frontend-react && npm install && npm run build
      ```
    - **Start Command** (Render will use Procfile automatically, or specify):
      ```bash
@@ -42,6 +43,7 @@ Render offers a free tier with 512MB RAM, suitable for this prototype.
      ```
    - **Plan**: Free
    - **Note**: Render will automatically detect the `Procfile` if present
+   - **Note**: The React frontend will be built and served from `frontend-react/dist` directory
 
 4. **Set Environment Variables**:
    - Click "Environment" tab

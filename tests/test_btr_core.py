@@ -528,3 +528,451 @@ class TestNisheka:
         assert 'gestation_score' in nisheka
         assert 0 <= nisheka['nisheka_lagna_deg'] < 360
         assert 0 < nisheka['gestation_months'] <= 12
+
+
+class TestVimshottariDasha:
+    """Tests for Vimshottari dasha calculations."""
+    
+    def test_get_moon_nakshatra(self):
+        """Test Moon nakshatra calculation."""
+        # Test various Moon positions
+        moon_positions = [0.0, 13.33, 26.67, 180.0, 360.0]
+        for moon_deg in moon_positions:
+            nakshatra = btr_core.get_moon_nakshatra(moon_deg)
+            assert isinstance(nakshatra, int)
+            assert 0 <= nakshatra < 27
+    
+    def test_calculate_vimshottari_dasha(self):
+        """Test Vimshottari dasha calculation."""
+        jd_ut_birth = 2460320.5
+        moon_longitude = 45.0  # Example Moon position
+        dasha_info = btr_core.calculate_vimshottari_dasha(jd_ut_birth, moon_longitude)
+        assert isinstance(dasha_info, dict)
+        assert 'nakshatra_num' in dasha_info
+        assert 'nakshatra_lord' in dasha_info
+        assert 'first_dasha_lord' in dasha_info
+        assert 'first_dasha_remaining_years' in dasha_info
+        assert 'dasha_sequence' in dasha_info
+        assert 0 <= dasha_info['nakshatra_num'] < 27
+        assert dasha_info['nakshatra_lord'] in ['Ketu', 'Venus', 'Sun', 'Moon', 'Mars', 'Rahu', 'Jupiter', 'Saturn', 'Mercury']
+    
+    def test_get_dasha_at_date(self):
+        """Test getting dasha at a specific date."""
+        jd_ut_birth = 2460320.5
+        moon_longitude = 45.0
+        event_date = datetime.date(2024, 6, 15)
+        dasha = btr_core.get_dasha_at_date(jd_ut_birth, event_date, moon_longitude)
+        assert isinstance(dasha, dict)
+        assert 'mahadasha' in dasha
+        assert 'antardasha' in dasha
+        assert 'years_into_mahadasha' in dasha
+        assert 'years_into_antardasha' in dasha
+        assert dasha['mahadasha'] in ['Ketu', 'Venus', 'Sun', 'Moon', 'Mars', 'Rahu', 'Jupiter', 'Saturn', 'Mercury']
+        assert dasha['antardasha'] in ['Ketu', 'Venus', 'Sun', 'Moon', 'Mars', 'Rahu', 'Jupiter', 'Saturn', 'Mercury']
+
+
+class TestDivisionalCharts:
+    """Tests for divisional chart calculations."""
+    
+    def test_calculate_divisional_chart_d3(self):
+        """Test D-3 (Drekkana) divisional chart."""
+        lagna_deg = 45.0
+        planets = {
+            'sun': 120.0,
+            'moon': 180.0,
+            'mars': 60.0,
+            'mercury': 90.0,
+            'jupiter': 240.0,
+            'venus': 300.0,
+            'saturn': 30.0,
+            'rahu': 150.0,
+            'ketu': 330.0
+        }
+        d3 = btr_core.calculate_divisional_chart(lagna_deg, planets, 3)
+        assert isinstance(d3, dict)
+        assert 'lagna' in d3
+        for planet_name in planets.keys():
+            assert planet_name in d3
+            assert 0 <= d3[planet_name] < 360
+    
+    def test_calculate_divisional_chart_d9(self):
+        """Test D-9 (Navamsa) divisional chart."""
+        lagna_deg = 45.0
+        planets = {
+            'sun': 120.0,
+            'moon': 180.0,
+            'mars': 60.0,
+            'mercury': 90.0,
+            'jupiter': 240.0,
+            'venus': 300.0,
+            'saturn': 30.0,
+            'rahu': 150.0,
+            'ketu': 330.0
+        }
+        d9 = btr_core.calculate_divisional_chart(lagna_deg, planets, 9)
+        assert isinstance(d9, dict)
+        assert 'lagna' in d9
+        for planet_name in planets.keys():
+            assert planet_name in d9
+            assert 0 <= d9[planet_name] < 360
+    
+    def test_calculate_divisional_chart_d10(self):
+        """Test D-10 (Dasamsa) divisional chart."""
+        lagna_deg = 45.0
+        planets = {
+            'sun': 120.0,
+            'moon': 180.0,
+            'mars': 60.0,
+            'mercury': 90.0,
+            'jupiter': 240.0,
+            'venus': 300.0,
+            'saturn': 30.0,
+            'rahu': 150.0,
+            'ketu': 330.0
+        }
+        d10 = btr_core.calculate_divisional_chart(lagna_deg, planets, 10)
+        assert isinstance(d10, dict)
+        assert 'lagna' in d10
+        for planet_name in planets.keys():
+            assert planet_name in d10
+            assert 0 <= d10[planet_name] < 360
+    
+    def test_calculate_divisional_chart_all_divisions(self):
+        """Test all divisional charts (D-3, D-7, D-9, D-10, D-12, D-60)."""
+        lagna_deg = 45.0
+        planets = {
+            'sun': 120.0,
+            'moon': 180.0,
+            'mars': 60.0,
+            'mercury': 90.0,
+            'jupiter': 240.0,
+            'venus': 300.0,
+            'saturn': 30.0,
+            'rahu': 150.0,
+            'ketu': 330.0
+        }
+        divisions = [3, 7, 9, 10, 12, 60]
+        for division in divisions:
+            chart = btr_core.calculate_divisional_chart(lagna_deg, planets, division)
+            assert isinstance(chart, dict)
+            assert 'lagna' in chart
+            assert 0 <= chart['lagna'] < 360
+
+
+class TestPhysicalTraitsScoring:
+    """Tests for physical traits scoring."""
+    
+    def test_score_physical_traits_height(self):
+        """Test physical traits scoring for height."""
+        lagna_deg = 15.0  # Aries (Large body)
+        planets = {
+            'sun': 120.0,
+            'moon': 180.0,
+            'mars': 60.0,
+            'mercury': 90.0,
+            'jupiter': 240.0,
+            'venus': 300.0,
+            'saturn': 30.0,
+            'rahu': 150.0,
+            'ketu': 330.0
+        }
+        traits = {'height': 'TALL'}
+        scores = btr_core.score_physical_traits(lagna_deg, planets, traits)
+        assert isinstance(scores, dict)
+        assert 'height' in scores
+        assert 'overall' in scores
+        assert 0 <= scores['height'] <= 100
+    
+    def test_score_physical_traits_build(self):
+        """Test physical traits scoring for build."""
+        lagna_deg = 15.0  # Aries (Mars lord - Athletic)
+        planets = {
+            'sun': 120.0,
+            'moon': 180.0,
+            'mars': 15.0,  # Mars in lagna
+            'mercury': 90.0,
+            'jupiter': 240.0,
+            'venus': 300.0,
+            'saturn': 30.0,
+            'rahu': 150.0,
+            'ketu': 330.0
+        }
+        traits = {'build': 'ATHLETIC'}
+        scores = btr_core.score_physical_traits(lagna_deg, planets, traits)
+        assert isinstance(scores, dict)
+        assert 'build' in scores
+        assert 0 <= scores['build'] <= 100
+    
+    def test_score_physical_traits_complexion(self):
+        """Test physical traits scoring for complexion."""
+        lagna_deg = 15.0
+        planets = {
+            'sun': 120.0,
+            'moon': 15.0,  # Moon in lagna (Fair)
+            'mars': 60.0,
+            'mercury': 90.0,
+            'jupiter': 240.0,
+            'venus': 300.0,
+            'saturn': 30.0,
+            'rahu': 150.0,
+            'ketu': 330.0
+        }
+        traits = {'complexion': 'FAIR'}
+        scores = btr_core.score_physical_traits(lagna_deg, planets, traits)
+        assert isinstance(scores, dict)
+        assert 'complexion' in scores
+        assert 0 <= scores['complexion'] <= 100
+    
+    def test_score_physical_traits_all_traits(self):
+        """Test physical traits scoring with all traits."""
+        lagna_deg = 15.0
+        planets = {
+            'sun': 120.0,
+            'moon': 180.0,
+            'mars': 60.0,
+            'mercury': 90.0,
+            'jupiter': 240.0,
+            'venus': 300.0,
+            'saturn': 30.0,
+            'rahu': 150.0,
+            'ketu': 330.0
+        }
+        traits = {
+            'height': 'TALL',
+            'build': 'ATHLETIC',
+            'complexion': 'FAIR'
+        }
+        scores = btr_core.score_physical_traits(lagna_deg, planets, traits)
+        assert isinstance(scores, dict)
+        assert 'height' in scores
+        assert 'build' in scores
+        assert 'complexion' in scores
+        assert 'overall' in scores
+        assert 0 <= scores['overall'] <= 100
+
+
+class TestLifeEventsVerification:
+    """Tests for life events verification."""
+    
+    def test_verify_life_events_marriage(self):
+        """Test marriage event verification."""
+        jd_ut_birth = 2460320.5
+        lagna_deg = 45.0
+        planets = {
+            'sun': 120.0,
+            'moon': 180.0,
+            'mars': 60.0,
+            'mercury': 90.0,
+            'jupiter': 240.0,
+            'venus': 300.0,
+            'saturn': 30.0,
+            'rahu': 150.0,
+            'ketu': 330.0
+        }
+        events = {
+            'marriage': {
+                'date': '2020-05-15'
+            }
+        }
+        moon_longitude = 180.0
+        scores = btr_core.verify_life_events(jd_ut_birth, lagna_deg, planets, events, moon_longitude)
+        assert isinstance(scores, dict)
+        assert 'marriage' in scores
+        assert 'overall' in scores
+        assert 0 <= scores['marriage'] <= 100
+    
+    def test_verify_life_events_children(self):
+        """Test children event verification."""
+        jd_ut_birth = 2460320.5
+        lagna_deg = 45.0
+        planets = {
+            'sun': 120.0,
+            'moon': 180.0,
+            'mars': 60.0,
+            'mercury': 90.0,
+            'jupiter': 240.0,
+            'venus': 300.0,
+            'saturn': 30.0,
+            'rahu': 150.0,
+            'ketu': 330.0
+        }
+        events = {
+            'children': {
+                'count': 2,
+                'dates': ['2021-08-20', '2023-03-15']
+            }
+        }
+        moon_longitude = 180.0
+        scores = btr_core.verify_life_events(jd_ut_birth, lagna_deg, planets, events, moon_longitude)
+        assert isinstance(scores, dict)
+        assert 'children' in scores
+        assert 'overall' in scores
+        assert 0 <= scores['children'] <= 100
+    
+    def test_verify_life_events_career(self):
+        """Test career event verification."""
+        jd_ut_birth = 2460320.5
+        lagna_deg = 45.0
+        planets = {
+            'sun': 120.0,
+            'moon': 180.0,
+            'mars': 60.0,
+            'mercury': 90.0,
+            'jupiter': 240.0,
+            'venus': 300.0,
+            'saturn': 30.0,
+            'rahu': 150.0,
+            'ketu': 330.0
+        }
+        events = {
+            'career': ['2018-06-01', '2022-03-15']
+        }
+        moon_longitude = 180.0
+        scores = btr_core.verify_life_events(jd_ut_birth, lagna_deg, planets, events, moon_longitude)
+        assert isinstance(scores, dict)
+        assert 'career' in scores
+        assert 'overall' in scores
+        assert 0 <= scores['career'] <= 100
+    
+    def test_verify_life_events_all_events(self):
+        """Test life events verification with all event types."""
+        jd_ut_birth = 2460320.5
+        lagna_deg = 45.0
+        planets = {
+            'sun': 120.0,
+            'moon': 180.0,
+            'mars': 60.0,
+            'mercury': 90.0,
+            'jupiter': 240.0,
+            'venus': 300.0,
+            'saturn': 30.0,
+            'rahu': 150.0,
+            'ketu': 330.0
+        }
+        events = {
+            'marriage': {'date': '2020-05-15'},
+            'children': {'count': 1, 'dates': ['2021-08-20']},
+            'career': ['2018-06-01']
+        }
+        moon_longitude = 180.0
+        scores = btr_core.verify_life_events(jd_ut_birth, lagna_deg, planets, events, moon_longitude)
+        assert isinstance(scores, dict)
+        assert 'marriage' in scores
+        assert 'children' in scores
+        assert 'career' in scores
+        assert 'overall' in scores
+        assert 0 <= scores['overall'] <= 100
+
+
+class TestEnhancedScoring:
+    """Tests for enhanced composite scoring."""
+    
+    def test_search_candidate_times_with_traits(self):
+        """Test candidate search with physical traits."""
+        dob = datetime.date(2024, 1, 15)
+        latitude = 28.6139
+        longitude = 77.2090
+        tz_offset = 5.5
+        start_time_str = "08:00"
+        end_time_str = "10:00"
+        optional_traits = {
+            'height': 'TALL',
+            'build': 'ATHLETIC',
+            'complexion': 'FAIR'
+        }
+        candidates = btr_core.search_candidate_times(
+            dob=dob,
+            latitude=latitude,
+            longitude=longitude,
+            tz_offset=tz_offset,
+            start_time_str=start_time_str,
+            end_time_str=end_time_str,
+            step_minutes=30,
+            optional_traits=optional_traits
+        )
+        assert isinstance(candidates, list)
+        if candidates:
+            candidate = candidates[0]
+            assert 'composite_score' in candidate
+            assert 'physical_traits_scores' in candidate
+            assert 0 <= candidate['composite_score'] <= 100
+    
+    def test_search_candidate_times_with_events(self):
+        """Test candidate search with life events."""
+        dob = datetime.date(2024, 1, 15)
+        latitude = 28.6139
+        longitude = 77.2090
+        tz_offset = 5.5
+        start_time_str = "08:00"
+        end_time_str = "10:00"
+        optional_events = {
+            'marriage': {'date': '2020-05-15'},
+            'children': {'count': 1, 'dates': ['2021-08-20']}
+        }
+        candidates = btr_core.search_candidate_times(
+            dob=dob,
+            latitude=latitude,
+            longitude=longitude,
+            tz_offset=tz_offset,
+            start_time_str=start_time_str,
+            end_time_str=end_time_str,
+            step_minutes=30,
+            optional_events=optional_events
+        )
+        assert isinstance(candidates, list)
+        if candidates:
+            candidate = candidates[0]
+            assert 'composite_score' in candidate
+            assert 'life_events_scores' in candidate
+            assert 0 <= candidate['composite_score'] <= 100
+    
+    def test_search_candidate_times_with_traits_and_events(self):
+        """Test candidate search with both traits and events."""
+        dob = datetime.date(2024, 1, 15)
+        latitude = 28.6139
+        longitude = 77.2090
+        tz_offset = 5.5
+        start_time_str = "08:00"
+        end_time_str = "10:00"
+        optional_traits = {'height': 'TALL'}
+        optional_events = {'marriage': {'date': '2020-05-15'}}
+        candidates = btr_core.search_candidate_times(
+            dob=dob,
+            latitude=latitude,
+            longitude=longitude,
+            tz_offset=tz_offset,
+            start_time_str=start_time_str,
+            end_time_str=end_time_str,
+            step_minutes=30,
+            optional_traits=optional_traits,
+            optional_events=optional_events
+        )
+        assert isinstance(candidates, list)
+        if candidates:
+            candidate = candidates[0]
+            assert 'composite_score' in candidate
+            assert 'physical_traits_scores' in candidate
+            assert 'life_events_scores' in candidate
+            assert 0 <= candidate['composite_score'] <= 100
+    
+    def test_composite_score_sorting(self):
+        """Test that candidates are sorted by composite score."""
+        dob = datetime.date(2024, 1, 15)
+        latitude = 28.6139
+        longitude = 77.2090
+        tz_offset = 5.5
+        start_time_str = "08:00"
+        end_time_str = "10:00"
+        candidates = btr_core.search_candidate_times(
+            dob=dob,
+            latitude=latitude,
+            longitude=longitude,
+            tz_offset=tz_offset,
+            start_time_str=start_time_str,
+            end_time_str=end_time_str,
+            step_minutes=30
+        )
+        if len(candidates) > 1:
+            # Candidates should be sorted by composite_score descending
+            for i in range(len(candidates) - 1):
+                assert candidates[i]['composite_score'] >= candidates[i + 1]['composite_score']

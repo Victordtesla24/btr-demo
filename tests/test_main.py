@@ -155,15 +155,22 @@ class TestAPIStructure:
             "optional_traits": {
                 "height": "TALL",
                 "build": "ATHLETIC",
-                "complexion": "WHEATISH"
+                "complexion": "FAIR"
             }
         }
         response = client.post("/api/btr", json=request_data)
         # Should either succeed, fail with validation, fail with API key issue, or return 404 if no candidates found
         assert response.status_code in [200, 400, 404, 500]
+        if response.status_code == 200:
+            data = response.json()
+            assert "candidates" in data
+            if data["candidates"]:
+                candidate = data["candidates"][0]
+                assert "composite_score" in candidate
+                assert "physical_traits_scores" in candidate
     
     def test_btr_with_optional_events(self, client):
-        """Test BTR endpoint with optional events."""
+        """Test BTR endpoint with optional life events."""
         request_data = {
             "dob": "2024-01-15",
             "pob_text": "Delhi, India",
@@ -187,4 +194,45 @@ class TestAPIStructure:
         response = client.post("/api/btr", json=request_data)
         # Should either succeed, fail with validation, fail with API key issue, or return 404 if no candidates found
         assert response.status_code in [200, 400, 404, 500]
+        if response.status_code == 200:
+            data = response.json()
+            assert "candidates" in data
+            if data["candidates"]:
+                candidate = data["candidates"][0]
+                assert "composite_score" in candidate
+                assert "life_events_scores" in candidate
+    
+    def test_btr_with_traits_and_events(self, client):
+        """Test BTR endpoint with both optional traits and events."""
+        request_data = {
+            "dob": "2024-01-15",
+            "pob_text": "Delhi, India",
+            "tz_offset_hours": 5.5,
+            "approx_tob": {
+                "mode": "approx",
+                "center": "12:00",
+                "window_hours": 3.0
+            },
+            "optional_traits": {
+                "height": "TALL"
+            },
+            "optional_events": {
+                "marriage": {
+                    "date": "2020-05-15"
+                }
+            }
+        }
+        response = client.post("/api/btr", json=request_data)
+        # Should either succeed, fail with validation, fail with API key issue, or return 404 if no candidates found
+        assert response.status_code in [200, 400, 404, 500]
+        if response.status_code == 200:
+            data = response.json()
+            assert "candidates" in data
+            if data["candidates"]:
+                candidate = data["candidates"][0]
+                assert "composite_score" in candidate
+                if "physical_traits_scores" in candidate:
+                    assert candidate["physical_traits_scores"] is not None
+                if "life_events_scores" in candidate:
+                    assert candidate["life_events_scores"] is not None
 

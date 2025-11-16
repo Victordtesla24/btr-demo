@@ -245,7 +245,26 @@ def calculate_gulika(date_local: datetime.date,
                      tz_offset: float) -> Dict[str, float]:
     """Calculate Gulika-lagna for the given date and location.
 
-    Gulika is an upagraha defined as Saturn’s segment of the day or night
+    BPHS Verses 4.1-4.3: Gulika Calculation (गुलिक गणना)
+    
+    Verse 4.1:
+    रविवारादिशन्यन्तं गुलिकादि निरूप्यते।
+    दिवसानष्टधा कृत्वा वारेशाद्मणयेत््रमात्।
+    "From Sunday to Saturday, Gulika etc. are determined.
+    Divide the day duration into 8 parts; count from the weekday lord."
+    
+    Verse 4.2:
+    अष्छ्मषो निरीशः स्याच्छन्यंशो गुरिकः स्मृतः।
+    रात्रिरष्यष्टधा भक्त्वा वःरर््पञ्चनादतः।
+    "The 8th portion has no lord (Niresha); Saturn's portion is called Gulika.
+    Similarly for night births, divide night duration into 8 parts 
+    and count from the 5th weekday lord."
+    
+    Verse 4.3:
+    शन्यशो गुलिकः प्रोक्तो गुर्वंशो यमघण्टकः।
+    "Saturn's portion = Gulika, Jupiter's portion = Yamaghantaka."
+
+    Gulika is an upagraha defined as Saturn's segment of the day or night
     divided into eight equal parts.  The day sequence starts from the
     weekday lord of the date (Sunday=Sun, Monday=Moon, …), while the night
     sequence starts from the planet ruling the fifth weekday from the date.
@@ -273,11 +292,11 @@ def calculate_gulika(date_local: datetime.date,
     next_day = date_local + datetime.timedelta(days=1)
     next_sunrise_local, _ = compute_sunrise_sunset(next_day, latitude, longitude, tz_offset)
 
-    # Daytime gulika
-    # BPHS Verse 4.1-4.3: Divide day into 8 parts, count from weekday lord
-    # Traditional sequence from weekday lord: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn
-    # Saturn is the 7th khanda (index 6) when counting from weekday lord
-    # The 8th khanda (index 7) has no lord (Niresha) per BPHS 4.2
+    # Daytime gulika (BPHS Verse 4.1)
+    # Divide day duration into 8 equal parts (khandas)
+    # Count from weekday lord: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn
+    # The 8th khanda has no lord (Niresha) per BPHS 4.2
+    # Saturn's khanda = Gulika period
     day_duration = (sunset_local - sunrise_local).total_seconds()
     day_segment = day_duration / 8.0
     weekday_idx = _weekday_index(date_local.weekday())
@@ -304,14 +323,15 @@ def calculate_gulika(date_local: datetime.date,
     jd_gulika_day = _datetime_to_jd_ut(gulika_day_mid, tz_offset)
     day_gulika_deg = compute_sidereal_lagna(jd_gulika_day, latitude, longitude)
 
-    # Nighttime gulika
-    # BPHS Verse 4.2: For night, count from 5th weekday lord
+    # Nighttime gulika (BPHS Verse 4.2)
+    # For night births: divide night duration into 8 parts
+    # Count from 5th weekday lord (not the day's weekday lord)
     night_duration = (next_sunrise_local - sunset_local).total_seconds()
     night_segment = night_duration / 8.0
     # 5th weekday lord from current weekday (weekday_idx + 4) % 7
     night_start_weekday_idx = (weekday_idx + 4) % 7
-    # Same logic: find Saturn's khanda from the night start weekday lord
-    # BPHS 4.2: For night, count from 5th weekday lord
+    # Find Saturn's khanda from the night start weekday lord
+    # Same sequence: starting from 5th weekday lord, find Saturn's position
     gulika_night_khanda_index = (6 - night_start_weekday_idx) % 7
     gulika_night_start = sunset_local + datetime.timedelta(seconds=night_segment * gulika_night_khanda_index)
     gulika_night_end = gulika_night_start + datetime.timedelta(seconds=night_segment)
@@ -330,9 +350,13 @@ def calculate_ishta_kala(candidate_local: datetime.datetime,
                          sunrise_local: datetime.datetime) -> Tuple[int, int, float]:
     """Compute the Ishta‑kāla between sunrise and the candidate time.
 
+    BPHS Reference: Required for Pranapada calculation (Verses 4.5, 4.7)
+    
     Ishta‑kāla is the elapsed time since local sunrise expressed in
     traditional units: ghāṭis and palās.  One day comprises 60 ghāṭis;
     each ghāṭi comprises 60 palās; each palā is 24 seconds.
+    
+    This is the fundamental time unit used in BPHS BTR calculations.
 
     Args:
         candidate_local: The candidate birth time (local naive datetime).
@@ -370,20 +394,24 @@ def calculate_madhya_pranapada(ghatis: int, palas: int) -> float:
     Returns:
         float: Prāṇa‑pada longitude in degrees (0–360).
     """
-    # Step 1: Ghatis × 4
+    # BPHS Verse 4.5 Formula Implementation:
+    # घटी चतुर्गुणा कार्यां तिथ्याप्तैश्च पलैर्युताः।
+    # दिनकरेणापहतं शेषं प्राणपदं स्मृतम्।
+    
+    # Step 1: Multiply ghatis by 4 (घटी चतुर्गुणा)
     part1 = ghatis * 4
     
-    # Step 2: Palas ÷ 15 (integer division for quotient)
+    # Step 2: Divide palas by 15, take quotient (तिथ्याप्तैश्च पलैर्युताः)
     pala_quotient = palas // 15
     
-    # Step 3: Add both
+    # Step 3: Add both values
     total = part1 + pala_quotient
     
-    # Step 4: Divide by 12, remainder is rashi
+    # Step 4: Divide by 12, remainder is rashi (दिनकरेणापहतं शेषं)
     rashi_index = total % 12
     
     # Step 5: Remainder from palas ÷ 15, multiplied by 2 for degrees
-    # Per BPHS 4.6: "Double the remainder to get degrees"
+    # Per BPHS 4.6: "Double the remainder to get degrees" (शेषात्यलान्तादिहवगुणी)
     pala_remainder = palas % 15
     degrees = pala_remainder * 2.0
     
@@ -420,28 +448,35 @@ def calculate_sphuta_pranapada(ishta_total_palas: float,
     Returns:
         float: The Sphuṭa Prāṇa‑pada longitude in degrees (0–360).
     """
-    # Step 1: Divide palas by 15 to get rashi fraction
-    # Every 15 palas = 1 rashi (30 degrees)
+    # BPHS Verse 4.7 Formula Implementation:
+    # स्वेष्टकालं पलीकृत्य तिथ्याप्तं भादिकं च यत्।
+    # चरागद्विभके भानौ योज्यं स्वे नवमे सुते।
+    
+    # Step 1: Convert Ishta Kala to palas, divide by 15 to get rashi fraction
+    # Every 15 palas = 1 rashi (30 degrees) - तिथ्याप्तं भादिकं
     rashi_fraction = ishta_total_palas / 15.0
     
     # Separate into whole rashis and fractional part
     sign_offset = int(math.floor(rashi_fraction))
     fraction_of_sign = rashi_fraction - sign_offset
     
-    # Step 2: Determine Sun's rashi and its nature
+    # Step 2: Determine Sun's rashi and its nature (चरागद्विभके भानौ)
     sun_sign = int(math.floor(sun_longitude / 30.0)) % 12
     nature_mod = sun_sign % 3
     
-    # Step 3: Determine base sign based on Sun's nature
+    # Step 3: Determine base sign based on Sun's nature per BPHS 4.7
     if nature_mod == 0:
-        # Chara (Movable): Add to Sun's own sign
+        # Chara (Movable): Add to Sun's own sign (स्वे)
+        # Signs: Aries(0), Cancer(3), Libra(6), Capricorn(9)
         base_sign = sun_sign
     elif nature_mod == 1:
-        # Sthira (Fixed): Add to 9th from Sun (9 signs = 270° = 8 mod 12)
-        base_sign = (sun_sign + 8) % 12
+        # Sthira (Fixed): Add to 9th from Sun (नवमे)
+        # Signs: Taurus(1), Leo(4), Scorpio(7), Aquarius(10)
+        base_sign = (sun_sign + 8) % 12  # 9th = +8 mod 12
     else:  # nature_mod == 2
-        # Dvisvabhava (Dual): Add to 5th from Sun (5 signs = 150° = 4 mod 12)
-        base_sign = (sun_sign + 4) % 12
+        # Dvisvabhava (Dual): Add to 5th from Sun (सुते)
+        # Signs: Gemini(2), Virgo(5), Sagittarius(8), Pisces(11)
+        base_sign = (sun_sign + 4) % 12  # 5th = +4 mod 12
     
     # Step 4: Add the rashi offset and convert to absolute longitude
     final_sign = (base_sign + sign_offset) % 12
@@ -471,26 +506,37 @@ def calculate_special_lagnas(ishta_kala: Tuple[int, int, float],
     """
     ghatis, palas, total_palas = ishta_kala
     
-    # 1. BHAVA LAGNA (BPHS 4.18)
+    # 1. BHAVA LAGNA (BPHS Verse 4.18)
+    # सूर्योदयात्समारभ्य घटीपञ्च प्रमाणतः।
+    # जन्मेष्टकालपर्यन्तं गणनीयं प्रयत्नतः।
+    # "From sunrise, every 5 ghatis equals one lagna progressing."
     # Every 5 ghatis = 1 sign progression from Sun
     bhava_offset_rashis = ghatis / 5.0
     bhava_lagna = (sun_longitude + (bhava_offset_rashis * 30.0)) % 360.0
     
-    # 2. HORA LAGNA (BPHS 4.20-21)
+    # 2. HORA LAGNA (BPHS Verses 4.20-21)
+    # सार्धद्विष्ठटिक्छा विप्र कालादिति विलग्नभात्।
+    # "Every 2.5 ghatis = one Hora Lagna progression."
     # Every 2.5 ghatis = 1 sign progression from Sun
     hora_offset_rashis = ghatis / 2.5
     hora_lagna = (sun_longitude + (hora_offset_rashis * 30.0)) % 360.0
     
-    # 3. GHATI LAGNA (BPHS 4.22-24)
-    # 1 ghati = 1 sign (30°), 1 pala = 2 degrees
+    # 3. GHATI LAGNA (BPHS Verses 4.22-24)
+    # सूर्योदयात्समारभ्य जन्मकालावधि क्रमात्।
+    # एकैकं घटिकांमानांल्लग्नं राश्यादिकं च यत्।
+    # राशीन् तत्र घटीतुल्या दहिभागाः पलसम्मिताः।
+    # "From sunrise to birth time, every 1 ghati = 1 sign progression.
+    # 1 ghati = 1 rashi; 1 pala = 2 degrees."
     ghati_offset_deg = (ghatis * 30.0) + (palas * 2.0)
     ghati_lagna = (sun_longitude + ghati_offset_deg) % 360.0
     
-    # 4. VARNADA LAGNA (BPHS 4.26-28)
-    # Complex calculation: Take Janma Lagna and Hora Lagna rashi numbers
-    # If both odd or both even: Add them
-    # If one odd, one even: Subtract (with adjustments)
-    # Result is always an ODD sign
+    # 4. VARNADA LAGNA (BPHS Verses 4.26-28)
+    # जन्महोराख्यलग्नक्षसंख्या ग्राह्या पृथक् पृथक्।
+    # ओजे लग्ने त्वेकयुग्मे चक्रशुद्धैकसंयुता।
+    # "Take Janma Lagna and Hora Lagna separately.
+    # If both odd or both even: Add them.
+    # If one odd, one even: Subtract (with adjustments).
+    # Result is always an ODD sign."
     janma_rashi_num = int(math.floor(janma_lagna_deg / 30.0)) + 1  # 1-12
     hora_rashi_num = int(math.floor(hora_lagna / 30.0)) + 1
     
@@ -540,10 +586,15 @@ def calculate_nisheka_lagna(saturn_deg: float,
     """Calculate Nisheka (Conception) Lagna per BPHS Verses 4.12-16.
     
     BPHS Verse 4.14:
+    यस्मिन् भावे स्थितो कोणस्तस्य मान्देर्यदन्तरम्।
+    लग्नभाग्यन्तरं योज्यं यच्च राश्यादि जायते।
+    
     Formula:
-    1. Saturn's house - Gulika lagna = Diff A
-    2. Lagna - 9th house = Diff B
+    1. Saturn's house - Gulika lagna = Diff A (मान्देर्यदन्तरम्)
+    2. Lagna - 9th house = Diff B (लग्नभाग्यन्तरं)
     3. Diff A + Diff B = Gestation period (in rashis, roughly months)
+    
+    This calculates the conception time (Nisheka) and verifies gestation period.
     
     Args:
         saturn_deg: Saturn's sidereal longitude in degrees
@@ -557,10 +608,11 @@ def calculate_nisheka_lagna(saturn_deg: float,
     gulika_rashi = int(math.floor(gulika_lagna_deg / 30.0)) % 12
     lagna_rashi = int(math.floor(janma_lagna_deg / 30.0)) % 12
     
-    # Difference A: Saturn rashi - Gulika rashi
+    # Difference A: Saturn rashi - Gulika rashi (BPHS 4.14: मान्देर्यदन्तरम्)
     diff_a = (saturn_rashi - gulika_rashi) % 12
     
-    # Difference B: Lagna rashi - 9th house rashi (9th = lagna + 8)
+    # Difference B: Lagna rashi - 9th house rashi (BPHS 4.14: लग्नभाग्यन्तरं)
+    # 9th house = lagna + 8 signs
     ninth_house_rashi = (lagna_rashi + 8) % 12
     diff_b = (lagna_rashi - ninth_house_rashi) % 12
     
@@ -614,7 +666,8 @@ def apply_bphs_hard_filters(lagna_deg: float,
                             ) -> Tuple[bool, Dict[str, float]]:
     """Apply BPHS hard filters to a single candidate time.
 
-    BPHS Verses 4.6, 4.8, 4.10:
+    BPHS Verses 4.6, 4.8, 4.10: Mandatory rectification conditions
+    
     This function enforces the three primary rectification conditions:
       1. Trine rule (BPHS 4.10) - MANDATORY: the lagna sign must be in 1st, 5th, 
          or 9th from the Prāṇa‑pada sign (human band). If not satisfied, 
@@ -636,24 +689,37 @@ def apply_bphs_hard_filters(lagna_deg: float,
         - is_accepted: True if candidate passes all mandatory filters
         - scores: Dictionary with verification scores (0-100) for each check
     """
+    # BPHS Verse 4.10: Trine Rule (MANDATORY for human birth)
+    # प्राणपदं को राशि से त्रिकोण राशि मे मनुष्यों के जन्मलग्न की राशि होती है।
+    # "From Pranapada's rashi, the birth lagna of humans is in TRINE position (1st, 5th, or 9th)."
     lagna_sign = int(math.floor(lagna_deg / 30.0)) % 12
     pranapada_sign = int(math.floor(pranapada_deg / 30.0)) % 12
     sign_diff = (lagna_sign - pranapada_sign) % 12
+    # Trine positions: 0 (1st), 4 (5th), 8 (9th)
     passes_trine = sign_diff in (0, 4, 8)
 
+    # BPHS Verse 4.6: Degree Matching
+    # लग्नांशप्राणांशपदैक्यता स्यात्
+    # "Lagna degrees and Pranapada degrees should be equal (पदैक्यता)"
     delta_pp = _angular_difference(lagna_deg, pranapada_deg)
     degree_match_score = max(0.0, (orb_tolerance - delta_pp) / orb_tolerance) * 100.0
     degree_match_score = min(100.0, degree_match_score)
 
+    # BPHS Verse 4.8: Triple Verification
+    # विना प्राणपदाच्छुद्धो गुलिकाद्वा निशाकराद्
+    # "Must be verified by Pranapada OR Gulika OR Moon"
+    # Check Gulika alignment (also check 7th from lagna as per some interpretations)
     delta_gulika = min(_angular_difference(lagna_deg, gulika_deg),
                        _angular_difference((lagna_deg + 180.0) % 360.0, gulika_deg))
     gulika_score = max(0.0, (orb_tolerance - delta_gulika) / orb_tolerance) * 100.0
     gulika_score = min(100.0, gulika_score)
 
+    # Check Moon alignment (निशाकराद्)
     delta_moon = _angular_difference(lagna_deg, moon_deg)
     moon_score = max(0.0, (orb_tolerance - delta_moon) / orb_tolerance) * 100.0
     moon_score = min(100.0, moon_score)
 
+    # Combined verification: at least one must pass (BPHS 4.8)
     combined_verification = max(degree_match_score, gulika_score, moon_score)
 
     is_accepted = passes_trine and (combined_verification > 0.0)
@@ -669,6 +735,494 @@ def apply_bphs_hard_filters(lagna_deg: float,
 
     return is_accepted, scores
 
+# ============================================================================
+# Vimshottari Dasha Calculation (BPHS - Dasha System)
+# ============================================================================
+
+# Nakshatra lords in order (27 nakshatras, each 13°20')
+# Each nakshatra is ruled by one of 9 planets in sequence
+_NAKSHATRA_LORDS = [
+    'Ketu', 'Venus', 'Sun', 'Moon', 'Mars',  # Ashwini to Mrigashira
+    'Rahu', 'Jupiter', 'Saturn', 'Mercury',   # Ardra to Ashlesha
+    'Ketu', 'Venus', 'Sun', 'Moon', 'Mars',   # Magha to Chitra
+    'Rahu', 'Jupiter', 'Saturn', 'Mercury',   # Swati to Jyeshtha
+    'Ketu', 'Venus', 'Sun', 'Moon', 'Mars',   # Mula to Dhanishta
+    'Rahu', 'Jupiter', 'Saturn', 'Mercury'     # Shatabhisha to Revati
+]
+
+# Vimshottari dasha periods in years
+_DASHA_PERIODS = {
+    'Ketu': 7,
+    'Venus': 20,
+    'Sun': 6,
+    'Moon': 10,
+    'Mars': 7,
+    'Rahu': 18,
+    'Jupiter': 16,
+    'Saturn': 19,
+    'Mercury': 17
+}
+
+def get_moon_nakshatra(moon_longitude: float) -> int:
+    """Get Moon's nakshatra number (0-26).
+    
+    Each nakshatra spans 13°20' (13.333... degrees).
+    
+    Args:
+        moon_longitude: Moon's sidereal longitude in degrees (0-360).
+        
+    Returns:
+        int: Nakshatra number (0-26).
+    """
+    nakshatra_span = 360.0 / 27.0  # 13°20'
+    nakshatra_num = int(math.floor(moon_longitude / nakshatra_span)) % 27
+    return nakshatra_num
+
+def calculate_vimshottari_dasha(jd_ut_birth: float, moon_longitude: float) -> Dict[str, Any]:
+    """Calculate Vimshottari dasha sequence starting from birth.
+    
+    BPHS Reference: Vimshottari is primary among all dasha systems.
+    
+    Args:
+        jd_ut_birth: Julian Day of birth in UT.
+        moon_longitude: Moon's sidereal longitude in degrees.
+        
+    Returns:
+        Dict with dasha sequence and start times.
+    """
+    nakshatra_num = get_moon_nakshatra(moon_longitude)
+    nakshatra_lord = _NAKSHATRA_LORDS[nakshatra_num]
+    
+    # Calculate position within nakshatra (0-1)
+    nakshatra_span = 360.0 / 27.0
+    position_in_nakshatra = (moon_longitude % nakshatra_span) / nakshatra_span
+    
+    # Find starting dasha lord in sequence
+    dasha_sequence = ['Ketu', 'Venus', 'Sun', 'Moon', 'Mars', 'Rahu', 'Jupiter', 'Saturn', 'Mercury']
+    start_index = dasha_sequence.index(nakshatra_lord)
+    
+    # Calculate remaining time in first dasha
+    first_dasha_lord = nakshatra_lord
+    first_dasha_years = _DASHA_PERIODS[first_dasha_lord]
+    remaining_years = first_dasha_years * (1.0 - position_in_nakshatra)
+    
+    return {
+        'nakshatra_num': nakshatra_num,
+        'nakshatra_lord': nakshatra_lord,
+        'first_dasha_lord': first_dasha_lord,
+        'first_dasha_remaining_years': remaining_years,
+        'dasha_sequence': dasha_sequence,
+        'start_index': start_index
+    }
+
+def get_dasha_at_date(jd_ut_birth: float, event_date: datetime.date, moon_longitude: float) -> Dict[str, Any]:
+    """Get running Mahadasha-Antardasha at a given event date.
+    
+    Args:
+        jd_ut_birth: Julian Day of birth in UT.
+        event_date: Event date to check.
+        moon_longitude: Moon's sidereal longitude at birth.
+        
+    Returns:
+        Dict with 'mahadasha', 'antardasha', and their start/end dates.
+    """
+    dasha_info = calculate_vimshottari_dasha(jd_ut_birth, moon_longitude)
+    
+    # Calculate elapsed years from birth
+    event_jd = swe.julday(event_date.year, event_date.month, event_date.day, 0.0)
+    elapsed_days = event_jd - jd_ut_birth
+    elapsed_years = elapsed_days / 365.25
+    
+    # Start from first dasha
+    dasha_sequence = dasha_info['dasha_sequence']
+    start_index = dasha_info['start_index']
+    remaining_years = dasha_info['first_dasha_remaining_years']
+    
+    # If elapsed time is within first dasha
+    if elapsed_years <= remaining_years:
+        mahadasha_lord = dasha_sequence[start_index]
+        mahadasha_years = _DASHA_PERIODS[mahadasha_lord]
+        years_into_mahadasha = elapsed_years
+    else:
+        # Find which Mahadasha we're in
+        current_years = remaining_years
+        dasha_index = start_index
+        
+        # Move to next dashas until we exceed elapsed_years
+        while current_years < elapsed_years:
+            dasha_index = (dasha_index + 1) % len(dasha_sequence)
+            mahadasha_lord = dasha_sequence[dasha_index]
+            mahadasha_years = _DASHA_PERIODS[mahadasha_lord]
+            if current_years + mahadasha_years >= elapsed_years:
+                # Found the Mahadasha
+                years_into_mahadasha = elapsed_years - current_years
+                break
+            current_years += mahadasha_years
+    
+    # Find Antardasha (sub-period within Mahadasha)
+    antardasha_sequence = dasha_sequence.copy()
+    # Rotate to start from Mahadasha lord
+    while antardasha_sequence[0] != mahadasha_lord:
+        antardasha_sequence.append(antardasha_sequence.pop(0))
+    
+    antardasha_index = 0
+    antardasha_years_elapsed = 0.0
+    
+    for i, antardasha_lord in enumerate(antardasha_sequence):
+        antardasha_years = (_DASHA_PERIODS[antardasha_lord] * mahadasha_years) / 120.0
+        if antardasha_years_elapsed + antardasha_years >= years_into_mahadasha:
+            antardasha_index = i
+            break
+        antardasha_years_elapsed += antardasha_years
+    
+    antardasha_lord = antardasha_sequence[antardasha_index]
+    antardasha_years = (_DASHA_PERIODS[antardasha_lord] * mahadasha_years) / 120.0
+    
+    return {
+        'mahadasha': mahadasha_lord,
+        'antardasha': antardasha_lord,
+        'years_into_mahadasha': years_into_mahadasha,
+        'years_into_antardasha': years_into_mahadasha - antardasha_years_elapsed
+    }
+
+# ============================================================================
+# Divisional Charts (Varga Charts)
+# ============================================================================
+
+def calculate_divisional_chart(lagna_deg: float, planets: Dict[str, float], division: int) -> Dict[str, float]:
+    """Calculate divisional chart positions for all planets.
+    
+    BPHS Reference: Divisional charts used for specific life areas:
+    - D-3 (Drekkana): Siblings, courage
+    - D-7 (Saptamsa): Children
+    - D-9 (Navamsa): Marriage, spouse
+    - D-10 (Dasamsa): Career, profession
+    - D-12 (Dwadasamsa): Parents, family
+    - D-60 (Shashtiamsa): Detailed analysis
+    
+    Args:
+        lagna_deg: Ascendant longitude in degrees.
+        planets: Dict of planet longitudes (sun, moon, mars, etc.).
+        division: Division number (3, 7, 9, 10, 12, or 60).
+        
+    Returns:
+        Dict with divisional chart positions for lagna and all planets.
+    """
+    divisional_positions = {}
+    
+    # Calculate lagna in divisional chart
+    lagna_sign = int(math.floor(lagna_deg / 30.0)) % 12
+    lagna_deg_in_sign = lagna_deg % 30.0
+    division_size = 30.0 / division
+    division_part = int(math.floor(lagna_deg_in_sign / division_size))
+    divisional_lagna_sign = (lagna_sign * division + division_part) % 12
+    divisional_lagna_deg = (divisional_lagna_sign * 30.0) + ((lagna_deg_in_sign % division_size) * division)
+    divisional_positions['lagna'] = divisional_lagna_deg % 360.0
+    
+    # Calculate each planet in divisional chart
+    for planet_name, planet_deg in planets.items():
+        planet_sign = int(math.floor(planet_deg / 30.0)) % 12
+        planet_deg_in_sign = planet_deg % 30.0
+        division_part = int(math.floor(planet_deg_in_sign / division_size))
+        divisional_planet_sign = (planet_sign * division + division_part) % 12
+        divisional_planet_deg = (divisional_planet_sign * 30.0) + ((planet_deg_in_sign % division_size) * division)
+        divisional_positions[planet_name] = divisional_planet_deg % 360.0
+    
+    return divisional_positions
+
+def _get_house_from_lagna(planet_deg: float, lagna_deg: float) -> int:
+    """Get house number (1-12) of planet from lagna.
+    
+    Args:
+        planet_deg: Planet longitude in degrees.
+        lagna_deg: Lagna longitude in degrees.
+        
+    Returns:
+        int: House number (1-12).
+    """
+    diff = (planet_deg - lagna_deg) % 360.0
+    house = int(math.floor(diff / 30.0)) + 1
+    return house if house <= 12 else 1
+
+def _get_sign_lord(sign: int) -> str:
+    """Get lord of zodiac sign.
+    
+    Args:
+        sign: Sign number (0=Aries, 1=Taurus, ..., 11=Pisces).
+        
+    Returns:
+        str: Planet name (sun, moon, mars, mercury, jupiter, venus, saturn).
+    """
+    sign_lords = {
+        0: 'mars',    # Aries
+        1: 'venus',   # Taurus
+        2: 'mercury', # Gemini
+        3: 'moon',    # Cancer
+        4: 'sun',     # Leo
+        5: 'mercury', # Virgo
+        6: 'venus',   # Libra
+        7: 'mars',    # Scorpio
+        8: 'jupiter', # Sagittarius
+        9: 'saturn',  # Capricorn
+        10: 'saturn', # Aquarius
+        11: 'jupiter' # Pisces
+    }
+    return sign_lords[sign % 12]
+
+# ============================================================================
+# Physical Traits Scoring (BPHS Chapter 2)
+# ============================================================================
+
+def score_physical_traits(lagna_deg: float, planets: Dict[str, float], traits: Dict[str, str]) -> Dict[str, float]:
+    """Score physical traits based on BPHS Chapter 2 verses.
+    
+    BPHS Verses 2.3-2.23: Physical characteristics by lagna sign and planets.
+    
+    Args:
+        lagna_deg: Ascendant longitude in degrees.
+        planets: Dict of planet longitudes.
+        traits: Dict with keys 'height', 'build', 'complexion' and values like 'TALL', 'ATHLETIC', 'FAIR'.
+        
+    Returns:
+        Dict with scores (0-100) for each trait.
+    """
+    scores = {}
+    lagna_sign = int(math.floor(lagna_deg / 30.0)) % 12
+    
+    # Height scoring (BPHS 2.6-2.23)
+    if 'height' in traits:
+        height_trait = traits['height'].upper()
+        # Large body: Aries(0), Taurus(1), Leo(4), Capricorn(9)
+        # Medium body: Gemini(2), Virgo(5), Libra(6), Aquarius(10), Pisces(11)
+        # Small body: Cancer(3), Scorpio(7)
+        large_signs = {0, 1, 4, 9}
+        medium_signs = {2, 5, 6, 10, 11}
+        small_signs = {3, 7}
+        
+        if height_trait == 'TALL':
+            expected_signs = large_signs
+        elif height_trait == 'MEDIUM':
+            expected_signs = medium_signs
+        elif height_trait == 'SHORT':
+            expected_signs = small_signs
+        else:
+            expected_signs = set()
+        
+        if lagna_sign in expected_signs:
+            scores['height'] = 100.0
+        else:
+            scores['height'] = 0.0
+    else:
+        scores['height'] = 0.0
+    
+    # Build scoring (based on lagnesh and planets in lagna)
+    if 'build' in traits:
+        build_trait = traits['build'].upper()
+        lagnesh = _get_sign_lord(lagna_sign)
+        
+        # Check planets in lagna (within 5 degrees)
+        planets_in_lagna = []
+        lagna_deg_in_sign = lagna_deg % 30.0
+        for planet_name, planet_deg in planets.items():
+            planet_deg_in_sign = planet_deg % 30.0
+            if abs(planet_deg_in_sign - lagna_deg_in_sign) < 5.0:
+                planets_in_lagna.append(planet_name)
+        
+        # Athletic build: Mars/Jupiter influence
+        # Slim: Mercury/Venus influence
+        # Heavy: Saturn influence
+        score = 50.0  # Base score
+        if build_trait == 'ATHLETIC':
+            if lagnesh in ['mars', 'jupiter'] or any(p in planets_in_lagna for p in ['mars', 'jupiter']):
+                score = 100.0
+        elif build_trait == 'SLIM':
+            if lagnesh in ['mercury', 'venus'] or any(p in planets_in_lagna for p in ['mercury', 'venus']):
+                score = 100.0
+        elif build_trait == 'HEAVY':
+            if lagnesh == 'saturn' or 'saturn' in planets_in_lagna:
+                score = 100.0
+        
+        scores['build'] = score
+    else:
+        scores['build'] = 0.0
+    
+    # Complexion scoring (BPHS 2.5, 2.16)
+    if 'complexion' in traits:
+        complexion_trait = traits['complexion'].upper()
+        lagna_deg_in_sign = lagna_deg % 30.0
+        
+        # Check planets in lagna
+        planets_in_lagna = []
+        for planet_name, planet_deg in planets.items():
+            planet_deg_in_sign = planet_deg % 30.0
+            if abs(planet_deg_in_sign - lagna_deg_in_sign) < 5.0:
+                planets_in_lagna.append(planet_name)
+        
+        # Sun: reddish-dark, Moon: fair, Mars: red, Mercury: dusky, Jupiter: yellowish
+        complexion_map = {
+            'FAIR': ['moon'],
+            'WHEATISH': ['jupiter', 'venus'],
+            'DARK': ['sun', 'mars', 'mercury', 'saturn']
+        }
+        
+        score = 0.0
+        for comp_key, planet_list in complexion_map.items():
+            if complexion_trait == comp_key:
+                if any(p in planets_in_lagna for p in planet_list):
+                    score = 100.0
+                break
+        
+        scores['complexion'] = score
+    else:
+        scores['complexion'] = 0.0
+    
+    # Calculate overall physical traits score
+    trait_scores = [s for s in scores.values() if s > 0]
+    if trait_scores:
+        scores['overall'] = sum(trait_scores) / len(trait_scores)
+    else:
+        scores['overall'] = 0.0
+    
+    return scores
+
+# ============================================================================
+# Life Events Verification (BPHS Chapter 12 + Dashas)
+# ============================================================================
+
+def verify_life_events(jd_ut_birth: float, lagna_deg: float, planets: Dict[str, float], 
+                       events: Dict[str, Any], moon_longitude: float) -> Dict[str, float]:
+    """Verify life events using dashas and divisional charts.
+    
+    BPHS Chapter 12: Life events timing and verification.
+    
+    Args:
+        jd_ut_birth: Julian Day of birth in UT.
+        lagna_deg: Ascendant longitude in degrees.
+        planets: Dict of planet longitudes.
+        events: Dict with 'marriage', 'children', 'career' keys.
+        moon_longitude: Moon's sidereal longitude at birth.
+        
+    Returns:
+        Dict with scores (0-100) for each event category.
+    """
+    scores = {}
+    
+    # Marriage verification (D-9 Navamsa, 7th house)
+    if 'marriage' in events and events['marriage'] and 'date' in events['marriage']:
+        try:
+            marriage_date = datetime.datetime.strptime(events['marriage']['date'], '%Y-%m-%d').date()
+            dasha_at_marriage = get_dasha_at_date(jd_ut_birth, marriage_date, moon_longitude)
+            
+            # Calculate D-9 chart
+            d9 = calculate_divisional_chart(lagna_deg, planets, 9)
+            d9_lagna = d9['lagna']
+            d9_7th_house = (d9_lagna + 180.0) % 360.0  # 7th from lagna
+            d9_7th_sign = int(math.floor(d9_7th_house / 30.0)) % 12
+            d9_7th_lord = _get_sign_lord(d9_7th_sign)
+            
+            # Favorable dashas for marriage: Venus, Jupiter, Moon
+            favorable_dashas = ['venus', 'jupiter', 'moon']
+            dasha_score = 100.0 if dasha_at_marriage['mahadasha'].lower() in favorable_dashas else 50.0
+            
+            # D-9 7th house should have benefic influence
+            benefic_planets = ['venus', 'jupiter', 'moon', 'mercury']
+            d9_score = 100.0 if d9_7th_lord in benefic_planets else 50.0
+            
+            scores['marriage'] = (dasha_score + d9_score) / 2.0
+        except (ValueError, KeyError):
+            scores['marriage'] = 0.0
+    else:
+        scores['marriage'] = 0.0
+    
+    # Children verification (D-7 Saptamsa, 5th house)
+    if 'children' in events and events['children']:
+        children_count = events['children'].get('count', 0)
+        children_dates = events['children'].get('dates', [])
+        
+        if children_count > 0 and children_dates:
+            # Calculate D-7 chart
+            d7 = calculate_divisional_chart(lagna_deg, planets, 7)
+            d7_lagna = d7['lagna']
+            d7_5th_house = (d7_lagna + 120.0) % 360.0  # 5th from lagna
+            d7_5th_sign = int(math.floor(d7_5th_house / 30.0)) % 12
+            d7_5th_lord = _get_sign_lord(d7_5th_sign)
+            
+            # Verify each child birth date
+            child_scores = []
+            for child_date_str in children_dates[:children_count]:
+                try:
+                    child_date = datetime.datetime.strptime(child_date_str, '%Y-%m-%d').date()
+                    dasha_at_birth = get_dasha_at_date(jd_ut_birth, child_date, moon_longitude)
+                    
+                    # Favorable dashas for children: Jupiter, Moon, Venus
+                    favorable_dashas = ['jupiter', 'moon', 'venus']
+                    dasha_score = 100.0 if dasha_at_birth['mahadasha'].lower() in favorable_dashas else 50.0
+                    child_scores.append(dasha_score)
+                except (ValueError, KeyError):
+                    child_scores.append(0.0)
+            
+            # D-7 5th house should have benefic influence
+            benefic_planets = ['jupiter', 'moon', 'venus']
+            d7_score = 100.0 if d7_5th_lord in benefic_planets else 50.0
+            
+            if child_scores:
+                scores['children'] = (sum(child_scores) / len(child_scores) + d7_score) / 2.0
+            else:
+                scores['children'] = d7_score
+        else:
+            scores['children'] = 0.0
+    else:
+        scores['children'] = 0.0
+    
+    # Career verification (D-10 Dasamsa, 10th house, BPHS 12.211)
+    if 'career' in events and events['career']:
+        career_dates = events['career'] if isinstance(events['career'], list) else []
+        
+        if career_dates:
+            # Calculate D-10 chart
+            d10 = calculate_divisional_chart(lagna_deg, planets, 10)
+            d10_lagna = d10['lagna']
+            d10_10th_house = d10_lagna  # 10th house = lagna in D-10
+            d10_10th_sign = int(math.floor(d10_10th_house / 30.0)) % 12
+            d10_10th_lord = _get_sign_lord(d10_10th_sign)
+            
+            # Verify each career event date
+            career_scores = []
+            for career_date_str in career_dates:
+                try:
+                    career_date = datetime.datetime.strptime(career_date_str, '%Y-%m-%d').date()
+                    dasha_at_event = get_dasha_at_date(jd_ut_birth, career_date, moon_longitude)
+                    
+                    # Favorable dashas for career: Sun, Jupiter, Mercury
+                    favorable_dashas = ['sun', 'jupiter', 'mercury']
+                    dasha_score = 100.0 if dasha_at_event['mahadasha'].lower() in favorable_dashas else 50.0
+                    career_scores.append(dasha_score)
+                except (ValueError, KeyError):
+                    career_scores.append(0.0)
+            
+            # D-10 10th lord should be strong (not weak per BPHS 12.211)
+            # Strong planets: Sun, Jupiter, Mars
+            strong_planets = ['sun', 'jupiter', 'mars']
+            d10_score = 100.0 if d10_10th_lord in strong_planets else 50.0
+            
+            if career_scores:
+                scores['career'] = (sum(career_scores) / len(career_scores) + d10_score) / 2.0
+            else:
+                scores['career'] = d10_score
+        else:
+            scores['career'] = 0.0
+    else:
+        scores['career'] = 0.0
+    
+    # Calculate overall life events score
+    event_scores = [s for s in scores.values() if s > 0]
+    if event_scores:
+        scores['overall'] = sum(event_scores) / len(event_scores)
+    else:
+        scores['overall'] = 0.0
+    
+    return scores
+
 def search_candidate_times(dob: datetime.date,
                            latitude: float,
                            longitude: float,
@@ -678,7 +1232,9 @@ def search_candidate_times(dob: datetime.date,
                            step_minutes: int = 10,
                            sunrise_local: Optional[datetime.datetime] = None,
                            sunset_local: Optional[datetime.datetime] = None,
-                           gulika_info: Optional[Dict[str, float]] = None
+                           gulika_info: Optional[Dict[str, float]] = None,
+                           optional_traits: Optional[Dict[str, str]] = None,
+                           optional_events: Optional[Dict[str, Any]] = None
                            ) -> List[Dict]:
     """Search a range of times on a given date and filter by BPHS rules.
 
@@ -693,6 +1249,8 @@ def search_candidate_times(dob: datetime.date,
         sunrise_local: Optionally precomputed sunrise time.
         sunset_local: Optionally precomputed sunset time.
         gulika_info: Optionally precomputed gulika calculation dictionary.
+        optional_traits: Optional physical traits dict with 'height', 'build', 'complexion'.
+        optional_events: Optional life events dict with 'marriage', 'children', 'career'.
 
     Returns:
         List[Dict]: List of candidate dictionaries that satisfy BPHS hard rules.
@@ -739,6 +1297,31 @@ def search_candidate_times(dob: datetime.date,
         
         accepted, scores = apply_bphs_hard_filters(lagna_deg, sphuta_pp, gulika_deg, moon_deg)
         if accepted:
+            # Calculate physical traits scores if provided
+            traits_scores = {}
+            if optional_traits:
+                traits_scores = score_physical_traits(lagna_deg, planets, optional_traits)
+            
+            # Calculate life events scores if provided
+            events_scores = {}
+            if optional_events:
+                jd_ut_birth = jd_ut
+                events_scores = verify_life_events(jd_ut_birth, lagna_deg, planets, optional_events, moon_deg)
+            
+            # Calculate enhanced composite score
+            # BPHS hard filters: 50% (degree_match: 20%, trine: 15%, verification: 15%)
+            # Physical traits: 20% (if provided, else 0%)
+            # Life events: 20% (if provided, else 0%)
+            # Nisheka: 10%
+            composite_score = (
+                scores['degree_match'] * 0.20 +
+                (100.0 if scores['passes_trine_rule'] else 0.0) * 0.15 +
+                scores['combined_verification'] * 0.15 +
+                (traits_scores.get('overall', 0.0) if traits_scores else 0.0) * 0.20 +
+                (events_scores.get('overall', 0.0) if events_scores else 0.0) * 0.20 +
+                nisheka['gestation_score'] * 0.10
+            )
+            
             candidate_record = {
                 'time_local': candidate_local.strftime('%Y-%m-%dT%H:%M:%S'),
                 'lagna_deg': round(lagna_deg, 2),
@@ -762,8 +1345,26 @@ def search_candidate_times(dob: datetime.date,
                     'gestation_months': round(nisheka['gestation_months'], 2),
                     'is_realistic': nisheka['is_realistic'],
                     'gestation_score': round(nisheka['gestation_score'], 2)
-                }
+                },
+                'composite_score': round(composite_score, 2)
             }
+            
+            # Add physical traits scores if calculated
+            if traits_scores:
+                candidate_record['physical_traits_scores'] = {
+                    k: round(v, 2) for k, v in traits_scores.items()
+                }
+            
+            # Add life events scores if calculated
+            if events_scores:
+                candidate_record['life_events_scores'] = {
+                    k: round(v, 2) for k, v in events_scores.items()
+                }
+            
             candidates.append(candidate_record)
         current_dt += datetime.timedelta(minutes=step_minutes)
+    
+    # Sort candidates by composite score (descending)
+    candidates.sort(key=lambda x: x.get('composite_score', 0.0), reverse=True)
+    
     return candidates

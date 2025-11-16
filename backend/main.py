@@ -63,34 +63,49 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static files (frontend)
+# Mount static files - prefer React build, fallback to plain HTML frontend
+react_build_path = Path(__file__).parent.parent / "frontend-react" / "dist"
 frontend_path = Path(__file__).parent.parent / "frontend"
-if frontend_path.exists():
+
+# Serve React build if it exists, otherwise serve plain HTML frontend
+if react_build_path.exists():
+    # Serve React build (production)
+    app.mount("/assets", StaticFiles(directory=str(react_build_path / "assets")), name="assets")
+elif frontend_path.exists():
+    # Fallback to plain HTML frontend
     app.mount("/static", StaticFiles(directory=str(frontend_path)), name="static")
+    
+    @app.get("/styles.css")
+    async def get_styles():
+        """Serve the CSS file"""
+        css_path = frontend_path / "styles.css"
+        if css_path.exists():
+            return FileResponse(str(css_path), media_type="text/css")
+        raise HTTPException(status_code=404, detail="CSS file not found")
+    
+    @app.get("/app.js")
+    async def get_app_js():
+        """Serve the JavaScript file"""
+        js_path = frontend_path / "app.js"
+        if js_path.exists():
+            return FileResponse(str(js_path), media_type="application/javascript")
+        raise HTTPException(status_code=404, detail="JavaScript file not found")
 
 @app.get("/")
 async def read_root():
-    """Serve the frontend index.html"""
-    index_path = frontend_path / "index.html"
-    if index_path.exists():
-        return FileResponse(str(index_path))
-    return {"message": "Frontend not found. API available at /docs"}
-
-@app.get("/styles.css")
-async def get_styles():
-    """Serve the CSS file"""
-    css_path = frontend_path / "styles.css"
-    if css_path.exists():
-        return FileResponse(str(css_path), media_type="text/css")
-    raise HTTPException(status_code=404, detail="CSS file not found")
-
-@app.get("/app.js")
-async def get_app_js():
-    """Serve the JavaScript file"""
-    js_path = frontend_path / "app.js"
-    if js_path.exists():
-        return FileResponse(str(js_path), media_type="application/javascript")
-    raise HTTPException(status_code=404, detail="JavaScript file not found")
+    """Serve the frontend index.html (React build preferred, fallback to plain HTML)"""
+    if react_build_path.exists():
+        index_path = react_build_path / "index.html"
+        if index_path.exists():
+            return FileResponse(str(index_path))
+        return {"message": "React frontend not found. API available at /docs"}
+    elif frontend_path.exists():
+        index_path = frontend_path / "index.html"
+        if index_path.exists():
+            return FileResponse(str(index_path))
+        return {"message": "Frontend not found. API available at /docs"}
+    else:
+        return {"message": "Frontend not found. API available at /docs"}
 
 # ---------------------------------------------------------------------------
 # Pydantic models for request/response
@@ -133,6 +148,18 @@ class Nisheka(BaseModel):
     is_realistic: bool
     gestation_score: float
 
+class PhysicalTraitsScore(BaseModel):
+    height: Optional[float] = None
+    build: Optional[float] = None
+    complexion: Optional[float] = None
+    overall: Optional[float] = None
+
+class LifeEventsScore(BaseModel):
+    marriage: Optional[float] = None
+    children: Optional[float] = None
+    career: Optional[float] = None
+    overall: Optional[float] = None
+
 class BTRCandidate(BaseModel):
     time_local: str
     lagna_deg: float
@@ -142,6 +169,9 @@ class BTRCandidate(BaseModel):
     verification_scores: Dict[str, float]
     special_lagnas: Optional[SpecialLagnas] = None
     nisheka: Optional[Nisheka] = None
+    composite_score: Optional[float] = None
+    physical_traits_scores: Optional[PhysicalTraitsScore] = None
+    life_events_scores: Optional[LifeEventsScore] = None
 
 class BTRResponse(BaseModel):
     engine_version: str
@@ -213,6 +243,9 @@ async def geocode(q: str = Query(..., description="Place name to geocode")):
 @app.post("/api/btr", response_model=BTRResponse)
 async def btr(request: BTRRequest):
     """Perform BPHS-based birth time rectification."""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Received BTR request: dob={request.dob}, pob={request.pob_text}, tz={request.tz_offset_hours}, mode={request.approx_tob.mode}")
     # Parse date of birth
     try:
         dob_date = datetime.datetime.strptime(request.dob, "%Y-%m-%d").date()
@@ -277,14 +310,16 @@ async def btr(request: BTRRequest):
             step_minutes=step_minutes,
             sunrise_local=sunrise_local,
             sunset_local=sunset_local,
-            gulika_info=gulika_info
+            gulika_info=gulika_info,
+            optional_traits=request.optional_traits,
+            optional_events=request.optional_events
         )
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=f"Failed to search candidate times: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error in candidate search: {str(e)}")
 
-    # Sort and wrap candidates
+    # Candidates are already sorted by composite_score in search_candidate_times
     if not candidates:
         raise HTTPException(
             status_code=404,
@@ -293,14 +328,9 @@ async def btr(request: BTRRequest):
                    "2) Invalid date/location, or 3) Calculation error."
         )
     
-    candidates_sorted = sorted(
-        candidates,
-        key=lambda x: x['verification_scores']['combined_verification'],
-        reverse=True
-    )
     # Convert to Pydantic models, handling optional fields
     candidate_models = []
-    for c in candidates_sorted:
+    for c in candidates:
         try:
             candidate_dict = {
                 'time_local': c['time_local'],
@@ -314,6 +344,12 @@ async def btr(request: BTRRequest):
                 candidate_dict['special_lagnas'] = SpecialLagnas(**c['special_lagnas'])
             if 'nisheka' in c:
                 candidate_dict['nisheka'] = Nisheka(**c['nisheka'])
+            if 'composite_score' in c:
+                candidate_dict['composite_score'] = c['composite_score']
+            if 'physical_traits_scores' in c:
+                candidate_dict['physical_traits_scores'] = PhysicalTraitsScore(**c['physical_traits_scores'])
+            if 'life_events_scores' in c:
+                candidate_dict['life_events_scores'] = LifeEventsScore(**c['life_events_scores'])
             candidate_models.append(BTRCandidate(**candidate_dict))
         except (KeyError, ValueError, TypeError) as e:
             raise HTTPException(
@@ -322,6 +358,24 @@ async def btr(request: BTRRequest):
             )
     
     best_candidate = candidate_models[0] if candidate_models else None
+
+    # Generate BPHS methodology notes
+    methodology_notes = (
+        "BPHS Birth Time Rectification Methodology:\n"
+        "Source: Brihat Parashar Hora Shastra - Chapter 4 (लग्नाध्याय)\n\n"
+        "Key Verses Implemented:\n"
+        "- Gulika Calculation: BPHS 4.1-4.3 (गुलिक गणना)\n"
+        "- Pranapada (Madhya): BPHS 4.5 (घटी चतुर्गुणा...)\n"
+        "- Pranapada (Sphuta): BPHS 4.7 (स्वेष्टकालं पलीकृत्य...)\n"
+        "- Degree Matching: BPHS 4.6 (लग्नांशप्राणांशपदैक्यता)\n"
+        "- Triple Verification: BPHS 4.8 (विना प्राणपदाच्छुद्धो...)\n"
+        "- Trine Rule (MANDATORY): BPHS 4.10 (प्राणपदं को राशि से त्रिकोण...)\n"
+        "- Special Lagnas: BPHS 4.18-28 (Bhava, Hora, Ghati, Varnada)\n"
+        "- Nisheka Lagna: BPHS 4.12-16 (Conception verification)\n\n"
+        "All candidates must pass the Trine Rule (BPHS 4.10) for human birth verification. "
+        "Candidates are scored based on degree matching, Gulika/Moon alignment, "
+        "and optional physical traits/life events verification."
+    )
 
     response = BTRResponse(
         engine_version="bphs-btr-prototype-v1",
@@ -335,6 +389,6 @@ async def btr(request: BTRRequest):
         },
         candidates=candidate_models,
         best_candidate=best_candidate,
-        notes=None
+        notes=methodology_notes
     )
     return response
