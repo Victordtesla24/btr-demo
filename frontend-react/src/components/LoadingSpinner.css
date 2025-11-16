@@ -1,0 +1,196 @@
+.loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+  font-size: 16px;
+  margin-top: 20px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #2196F3;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-detail {
+  font-size: 14px;
+  color: #999;
+  margin-top: 20px;
+}
+
+.phase-progress {
+  margin-top: 30px;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.phase-current {
+  margin-bottom: 20px;
+  padding: 20px;
+  background: #e3f2fd;
+  border-left: 4px solid #2196F3;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.phase-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.phase-number-badge {
+  background: #2196F3;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.phase-current strong {
+  color: #1976D2;
+  font-size: 20px;
+  flex: 1;
+}
+
+.phase-desc {
+  display: block;
+  color: #555;
+  font-size: 15px;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.phase-details {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(33, 150, 243, 0.2);
+}
+
+.phase-details p {
+  margin: 0;
+  color: #666;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.phases-timeline {
+  margin-top: 20px;
+}
+
+.phases-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  position: relative;
+}
+
+.phase-indicator {
+  padding: 10px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.phase-indicator.pending {
+  opacity: 0.5;
+  background: #f5f5f5;
+}
+
+.phase-indicator.active {
+  background: #e3f2fd;
+  border-color: #2196F3;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+  transform: scale(1.05);
+}
+
+.phase-indicator.completed {
+  background: #e8f5e9;
+  border-color: #4CAF50;
+}
+
+.phase-indicator-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.phase-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ccc;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.phase-indicator.active .phase-dot {
+  background: #2196F3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.3);
+  animation: pulse 2s infinite;
+}
+
+.phase-indicator.completed .phase-dot {
+  background: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(33, 150, 243, 0.1);
+  }
+}
+
+.phase-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.phase-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 600;
+}
+
+.phase-name-small {
+  font-size: 11px;
+  color: #999;
+  line-height: 1.2;
+}
+
+.phase-indicator.active .phase-label {
+  color: #1976D2;
+}
+
+.phase-indicator.active .phase-name-small {
+  color: #555;
+}
+
+.phase-indicator.completed .phase-label {
+  color: #2e7d32;
+}
+
+.phase-indicator.completed .phase-name-small {
+  color: #4caf50;
+}
+

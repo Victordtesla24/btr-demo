@@ -1,0 +1,103 @@
+.methodology-display {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.methodology-display h2 {
+  margin-top: 0;
+  color: #2c3e50;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 0.5rem;
+}
+
+.methodology-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.methodology-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.methodology-section h3 {
+  margin-top: 0;
+  color: #34495e;
+  font-size: 1.3rem;
+}
+
+.methodology-section h4 {
+  color: #2c3e50;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.verse-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.verse-item {
+  padding: 1rem;
+  background: #f8f9fa;
+  border-left: 4px solid #3498db;
+  border-radius: 4px;
+}
+
+.verse-item p {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+
+.sanskrit {
+  font-family: 'Noto Sans Devanagari', 'Arial Unicode MS', sans-serif;
+  font-size: 1.1rem;
+  color: #8b4513;
+  font-style: italic;
+  margin: 0.75rem 0;
+  padding: 0.5rem;
+  background: #fff9e6;
+  border-radius: 4px;
+}
+
+.note {
+  font-style: italic;
+  color: #7f8c8d;
+  margin-top: 0.5rem;
+}
+
+.pipeline-steps {
+  padding-left: 1.5rem;
+}
+
+.pipeline-steps li {
+  margin: 0.75rem 0;
+  line-height: 1.6;
+}
+
+.pipeline-steps ul {
+  margin-top: 0.5rem;
+  margin-left: 1.5rem;
+}
+
+.pipeline-steps ul li {
+  margin: 0.5rem 0;
+}
+
+.notes-list {
+  padding-left: 1.5rem;
+}
+
+.notes-list li {
+  margin: 0.75rem 0;
+  line-height: 1.6;
+}
+

@@ -1,0 +1,368 @@
+.multi-step-form {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.progress-indicator {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 30px;
+  position: relative;
+}
+
+.progress-indicator::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #e0e0e0;
+  z-index: 0;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+  flex: 1;
+}
+
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  margin-bottom: 8px;
+  transition: all 0.3s ease;
+}
+
+.progress-step.active .step-number {
+  background: #2196F3;
+  color: white;
+  box-shadow: 0 0 0 4px rgba(33, 150, 243, 0.2);
+}
+
+.progress-step.completed .step-number {
+  background: #4CAF50;
+  color: white;
+}
+
+.step-label {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+}
+
+.progress-step.active .step-label {
+  color: #2196F3;
+  font-weight: 600;
+}
+
+.progress-step.completed .step-label {
+  color: #4CAF50;
+}
+
+.step-content {
+  background: white;
+  border-radius: 8px;
+  padding: 30px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.step-panel h2 {
+  margin-top: 0;
+  color: #1976D2;
+  font-size: 24px;
+}
+
+.step-description {
+  color: #666;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.workflow-info {
+  background: #f0f7ff;
+  border-left: 4px solid #2196F3;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.workflow-info p {
+  margin: 0 0 10px 0;
+  color: #1976D2;
+  font-weight: 600;
+}
+
+.workflow-info ul {
+  margin: 10px 0 0 0;
+  padding-left: 20px;
+  color: #555;
+}
+
+.workflow-info li {
+  margin-bottom: 5px;
+  font-size: 13px;
+}
+
+.workflow-note {
+  margin-top: 15px;
+  padding: 10px;
+  background: #fff3cd;
+  border-left: 3px solid #ffc107;
+  border-radius: 3px;
+  color: #856404;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+fieldset {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+fieldset legend {
+  font-weight: 600;
+  color: #333;
+  padding: 0 10px;
+}
+
+fieldset > div {
+  margin-bottom: 15px;
+}
+
+fieldset label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #333;
+}
+
+fieldset input[type="text"],
+fieldset input[type="date"],
+fieldset input[type="time"],
+fieldset input[type="number"],
+fieldset select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+fieldset input[type="number"] {
+  max-width: 150px;
+}
+
+fieldset small {
+  display: block;
+  margin-top: 5px;
+  color: #666;
+  font-size: 12px;
+}
+
+.tob-approx-fields {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.tob-approx-fields input[type="time"] {
+  max-width: 150px;
+}
+
+.time-range-override {
+  display: flex;
+  gap: 15px;
+  align-items: flex-end;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.time-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 150px;
+}
+
+.time-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+}
+
+.time-separator {
+  align-self: flex-end;
+  margin-bottom: 8px;
+  color: #666;
+  font-weight: 500;
+}
+
+.time-range-preview {
+  margin-top: 8px;
+  padding: 8px;
+  background: #e8f5e9;
+  border-radius: 4px;
+  border-left: 3px solid #4caf50;
+}
+
+.time-range-preview small {
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.geocode-status {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.geocode-status.geocoding {
+  background: #e3f2fd;
+  border-left: 3px solid #2196f3;
+  color: #1976d2;
+}
+
+.geocode-status.geocode-success {
+  background: #e8f5e9;
+  border-left: 3px solid #4caf50;
+  color: #2e7d32;
+}
+
+.geocode-status.geocode-success small {
+  display: block;
+  margin-top: 4px;
+  color: #4caf50;
+  font-size: 11px;
+}
+
+.geocode-status.geocode-error {
+  background: #ffebee;
+  border-left: 3px solid #f44336;
+  color: #c62828;
+}
+
+.traits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.children-dates {
+  margin-top: 10px;
+  padding-left: 20px;
+}
+
+.children-dates > div {
+  margin-bottom: 10px;
+}
+
+.step-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 30px;
+  gap: 10px;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background: #2196F3;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #1976D2;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
+}
+
+.btn-secondary {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.btn-secondary:hover {
+  background: #e0e0e0;
+}
+
+.review-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 4px;
+}
+
+.review-section h3 {
+  margin-top: 0;
+  color: #1976D2;
+  font-size: 18px;
+}
+
+.review-section dl {
+  margin: 0;
+}
+
+.review-section dt {
+  font-weight: 600;
+  color: #666;
+  margin-top: 10px;
+  margin-bottom: 5px;
+}
+
+.review-section dd {
+  margin-left: 0;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+@media (max-width: 768px) {
+  .progress-indicator {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .progress-indicator::before {
+    display: none;
+  }
+
+  .traits-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .step-actions {
+    flex-direction: column;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+  }
+}
+
