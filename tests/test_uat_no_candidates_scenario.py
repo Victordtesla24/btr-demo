@@ -96,8 +96,9 @@ def test_error_recovery_flow_structure():
     """Test that the error recovery provides proper structure for UI."""
     
     # Use parameters likely to trigger recovery flow
+    future_dob = (datetime.date.today() + datetime.timedelta(days=365)).isoformat()
     recovery_request = {
-        "dob": "2025-01-01",  # Future date - should fail
+        "dob": future_dob,  # Future date - should fail
         "pob_text": "Test City",
         "tz_offset_hours": 5.5,
         "approx_tob": {"mode": "unknown"}

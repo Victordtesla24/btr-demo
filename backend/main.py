@@ -183,20 +183,34 @@ class MajorEventModel(BaseModel):
     title: str
     description: Optional[str] = None
 
+class SiblingEventModel(BaseModel):
+    type: str = Field(..., description="elder_brother, elder_sister, younger_brother, younger_sister")
+    count: int = Field(0, ge=0)
+    notes: Optional[str] = None
+
+class ParentEventModel(BaseModel):
+    relation: str = Field(..., description="father, mother")
+    is_alive: bool = True
+    death_date: Optional[str] = None
+    notes: Optional[str] = None
+
 class LifeEventsModel(BaseModel):
     marriage: Optional[MarriageEventModel] = None  # Legacy single marriage
     marriages: Optional[List[MarriageEventModel]] = None
     children: Optional[Any] = None  # Accept legacy dict or list of child events
     career: Optional[Any] = None    # Accept list of career events or date strings
     major: Optional[List[MajorEventModel]] = None
+    siblings: Optional[List[SiblingEventModel]] = None
+    parents: Optional[List[ParentEventModel]] = None
     model_config = ConfigDict(extra='allow')
 
 class BTRRequest(BaseModel):
-    dob: str = Field(..., description="Date of birth in YYYY-MM-DD")
+    dob: str = Field(..., description="Date of birth in DD-MM-YYYY")
     pob_text: str = Field(..., description="Place of birth text")
     tz_offset_hours: float = Field(..., description="Time zone offset from UTC in hours")
     approx_tob: ApproxTob = Field(..., description="Approximate time of birth details")
     time_range_override: Optional[TimeRangeOverride] = Field(None, description="Explicit time range override")
+    prashna_mode: Optional[bool] = Field(False, description="Use current time for Nashta Jataka analysis")
     optional_traits: Optional[PhysicalTraitsModel] = None
     optional_events: Optional[LifeEventsModel] = None
 
@@ -223,6 +237,8 @@ class LifeEventsScore(BaseModel):
     children: Optional[float] = None
     career: Optional[float] = None
     major: Optional[float] = None
+    siblings: Optional[float] = None
+    parents: Optional[float] = None
     overall: Optional[float] = None
 
 class BTRCandidate(BaseModel):
@@ -734,10 +750,12 @@ async def btr(request: BTRRequest):
     )
     # Parse date of birth
     try:
-        dob_date = datetime.datetime.strptime(request.dob, "%Y-%m-%d").date()
+        dob_date = datetime.datetime.strptime(request.dob, "%d-%m-%Y").date()
+        if dob_date > datetime.date.today():
+            raise HTTPException(status_code=400, detail="Date of birth cannot be in the future.")
     except ValueError:
         logger.exception("[req:%s] Invalid dob format", request_id)
-        raise HTTPException(status_code=400, detail="Invalid date format for dob. Use YYYY-MM-DD.")
+        raise HTTPException(status_code=400, detail="Invalid date format for dob. Use DD-MM-YYYY.")
 
     # Geocode the place
     _log_phase(request_id, 1, "Geocode", "Requesting geocode from OpenCage")

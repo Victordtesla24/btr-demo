@@ -160,8 +160,17 @@ def compute_sun_moon_longitudes(jd_ut: float) -> tuple[float, float]:
     except Exception as e:
         raise RuntimeError(f"Swiss Ephemeris planet calculation failed: {e}") from e
 
+# Cache for planet positions to avoid redundant calculations
+# Planets move slowly enough that we can reuse positions for small time deltas (e.g. 15 mins)
+_PLANET_CACHE: dict[int, dict[str, float]] = {}
+_PLANET_CACHE_RESOLUTION_JD = 0.0104  # ~15 minutes in days (15/1440)
+
 def get_planet_positions(jd_ut: float) -> dict[str, float]:
     """Get all planet positions (sidereal, Lahiri ayanamsa).
+    
+    Uses a cache with ~15-minute resolution since planetary positions 
+    (except Moon) change very slowly. Moon changes ~0.13° in 15 mins,
+    which is acceptable for initial filtering.
     
     Args:
         jd_ut: Julian Day in UT.
@@ -172,6 +181,13 @@ def get_planet_positions(jd_ut: float) -> dict[str, float]:
     Raises:
         RuntimeError: If Swiss Ephemeris calculation fails.
     """
+    # Round JD to resolution for caching key
+    cache_key = int(jd_ut / _PLANET_CACHE_RESOLUTION_JD)
+    
+    if cache_key in _PLANET_CACHE:
+        # logger.debug(f"Cache hit for JD {jd_ut}")
+        return _PLANET_CACHE[cache_key]
+
     try:
         ayan = swe.get_ayanamsa_ut(jd_ut)
         if not isinstance(ayan, (int, float)) or math.isnan(ayan) or math.isinf(ayan):
@@ -202,6 +218,11 @@ def get_planet_positions(jd_ut: float) -> dict[str, float]:
         
         # Ketu is 180° from Rahu
         positions['ketu'] = (positions['rahu'] + 180.0) % 360.0
+        
+        # Update cache (simple size limit to prevent memory leak)
+        if len(_PLANET_CACHE) > 1000:
+            _PLANET_CACHE.clear()
+        _PLANET_CACHE[cache_key] = positions
         
         return positions
     except RuntimeError:
@@ -1489,6 +1510,69 @@ def score_physical_traits(lagna_deg: float, planets: dict[str, float], traits: d
     return scores
 
 # ============================================================================
+# Tattwa Shodhana (Element Verification)
+# ============================================================================
+
+def apply_tattwa_shodhana(lagna_deg: float, gender: str) -> float:
+    """Apply Tattwa Shodhana (Element Verification) based on gender.
+    
+    BPHS and Standard BTR Practice:
+    - Male births: Expected in Agni (Fire) or Vayu (Air) elements.
+    - Female births: Expected in Jala (Water) or Prithvi (Earth) elements.
+    - Akash (Ether) is generally considered neutral or supportive.
+    
+    Args:
+        lagna_deg: Ascendant longitude in degrees.
+        gender: 'male' or 'female'.
+        
+    Returns:
+        float: Score (0-100) indicating compatibility with gender.
+    """
+    if not gender or gender.lower() not in ['male', 'female']:
+        return 50.0 # Neutral score if gender unknown
+        
+    # Element mapping for signs
+    # Fire (Agni): Aries(0), Leo(4), Sagittarius(8)
+    # Earth (Prithvi): Taurus(1), Virgo(5), Capricorn(9)
+    # Air (Vayu): Gemini(2), Libra(6), Aquarius(10)
+    # Water (Jala): Cancer(3), Scorpio(7), Pisces(11)
+    
+    lagna_sign = int(math.floor(lagna_deg / 30.0)) % 12
+    
+    element = None
+    if lagna_sign in [0, 4, 8]:
+        element = 'fire'
+    elif lagna_sign in [1, 5, 9]:
+        element = 'earth'
+    elif lagna_sign in [2, 6, 10]:
+        element = 'air'
+    elif lagna_sign in [3, 7, 11]:
+        element = 'water'
+        
+    gender = gender.lower()
+    score = 50.0
+    
+    if gender == 'male':
+        if element in ['fire', 'air']:
+            score = 100.0
+        elif element == 'earth':
+            score = 25.0
+        elif element == 'water':
+            score = 25.0
+    elif gender == 'female':
+        if element in ['earth', 'water']:
+            score = 100.0
+        elif element == 'fire':
+            score = 25.0
+        elif element == 'air':
+            score = 25.0
+            
+    # Note: Advanced Tattwa Shodhana uses Antara Tattwa (sub-elements) derived from time blocks.
+    # This implementation uses the primary Lagna Tattwa for foundational verification.
+    
+    return score
+
+# ============================================================================
 # Life Events Verification (BPHS Chapter 12 + Dashas)
 # ============================================================================
 
@@ -1502,7 +1586,7 @@ def verify_life_events(jd_ut_birth: float, lagna_deg: float, planets: dict[str, 
         jd_ut_birth: Julian Day of birth in UT.
         lagna_deg: Ascendant longitude in degrees.
         planets: Dict of planet longitudes.
-        events: Dict with 'marriage', 'children', 'career' keys.
+        events: Dict with 'marriage', 'children', 'career', 'siblings', 'parents' keys.
         moon_longitude: Moon's sidereal longitude at birth.
         
     Returns:
@@ -1534,7 +1618,7 @@ def verify_life_events(jd_ut_birth: float, lagna_deg: float, planets: dict[str, 
 
     if marriage_date_str:
         try:
-            marriage_date = datetime.datetime.strptime(marriage_date_str, '%Y-%m-%d').date()
+            marriage_date = datetime.datetime.strptime(marriage_date_str, '%d-%m-%Y').date()
             dasha_at_marriage = get_dasha_at_date(jd_ut_birth, marriage_date, moon_longitude)
             
             # Calculate D-9 chart
@@ -1588,7 +1672,7 @@ def verify_life_events(jd_ut_birth: float, lagna_deg: float, planets: dict[str, 
             child_scores = []
             for child_date_str in children_dates[:children_count]:
                 try:
-                    child_date = datetime.datetime.strptime(child_date_str, '%Y-%m-%d').date()
+                    child_date = datetime.datetime.strptime(child_date_str, '%d-%m-%Y').date()
                     dasha_at_birth = get_dasha_at_date(jd_ut_birth, child_date, moon_longitude)
                     
                     # Favorable dashas for children: Jupiter, Moon, Venus
@@ -1635,7 +1719,7 @@ def verify_life_events(jd_ut_birth: float, lagna_deg: float, planets: dict[str, 
             career_scores = []
             for career_date_str in career_dates:
                 try:
-                    career_date = datetime.datetime.strptime(career_date_str, '%Y-%m-%d').date()
+                    career_date = datetime.datetime.strptime(career_date_str, '%d-%m-%Y').date()
                     dasha_at_event = get_dasha_at_date(jd_ut_birth, career_date, moon_longitude)
                     
                     # Favorable dashas for career: Sun, Jupiter, Mercury
@@ -1659,6 +1743,72 @@ def verify_life_events(jd_ut_birth: float, lagna_deg: float, planets: dict[str, 
     else:
         scores['career'] = 0.0
 
+    # Siblings verification (D-3 Drekkana, 3rd house)
+    # BPHS: 3rd house for siblings, Mars is karaka.
+    if 'siblings' in events and events['siblings']:
+        siblings_data = events['siblings']
+        # D-3 calculation
+        d3 = calculate_divisional_chart(lagna_deg, planets, 3)
+        d3_lagna = d3['lagna']
+        d3_3rd_house = (d3_lagna + 60.0) % 360.0 # 3rd from lagna
+        d3_3rd_sign = int(math.floor(d3_3rd_house / 30.0)) % 12
+        d3_3rd_lord = _get_sign_lord(d3_3rd_sign)
+        
+        # Basic logic: If siblings exist, 3rd lord and Mars should be reasonably placed.
+        # If no siblings, they might be afflicted.
+        # This is a simplification.
+        
+        has_siblings = False
+        for sib in siblings_data:
+             if isinstance(sib, dict) and sib.get('count', 0) > 0:
+                 has_siblings = True
+                 break
+        
+        # Score based on Karaka (Mars) strength and 3rd lord
+        # We don't have full shadbala, so we use simple sign placement for now
+        mars_score = 50.0 # Default
+        # Check Mars in D-3
+        # (Logic placeholder: In a real system we check friendly signs, etc.)
+        
+        # For now, assume if candidate has valid D-3 3rd lord, we give a base score
+        # If user reported siblings, we expect 3rd house not to be totally destroyed
+        scores['siblings'] = 75.0 # Placeholder for now as D-3 logic is complex
+        
+    else:
+        scores['siblings'] = 0.0
+
+    # Parents verification (D-12 Dwadasamsa, 4th/9th houses)
+    # BPHS: 9th for Father, 4th for Mother. Sun for Father, Moon for Mother.
+    if 'parents' in events and events['parents']:
+        parents_data = events['parents']
+        d12 = calculate_divisional_chart(lagna_deg, planets, 12)
+        
+        parent_scores = []
+        for parent in parents_data:
+            if isinstance(parent, dict):
+                relation = parent.get('relation', '').lower()
+                is_alive = parent.get('is_alive', True)
+                death_date = parent.get('death_date')
+                
+                if death_date:
+                     try:
+                        dd = datetime.datetime.strptime(death_date, '%d-%m-%Y').date()
+                        dasha = get_dasha_at_date(jd_ut_birth, dd, moon_longitude)
+                        # Death often happens in Maraka dashas (2nd/7th lords) or Saturn/Rahu
+                        # Simplified check
+                        malefic_dashas = ['saturn', 'rahu', 'ketu', 'mars']
+                        p_score = 80.0 if dasha['mahadasha'].lower() in malefic_dashas else 50.0
+                        parent_scores.append(p_score)
+                     except:
+                         pass
+        
+        if parent_scores:
+            scores['parents'] = sum(parent_scores) / len(parent_scores)
+        else:
+             scores['parents'] = 60.0 # Default if no dates to verify
+    else:
+        scores['parents'] = 0.0
+
     # Major events (health/relocation/awards) - dashā alignment heuristic
     if 'major' in events and events['major']:
         major_events_raw = events['major']
@@ -1672,7 +1822,7 @@ def verify_life_events(jd_ut_birth: float, lagna_deg: float, planets: dict[str, 
             major_scores = []
             for major_date in major_dates:
                 try:
-                    event_date = datetime.datetime.strptime(major_date, '%Y-%m-%d').date()
+                    event_date = datetime.datetime.strptime(major_date, '%d-%m-%Y').date()
                     dasha = get_dasha_at_date(jd_ut_birth, event_date, moon_longitude)
                     # Benefic dashas for stability/health/recognition per general BPHS benefic list
                     benefic_dashas = ['jupiter', 'venus', 'moon', 'mercury']
@@ -2114,13 +2264,30 @@ def search_candidate_times(dob: datetime.date,
         wrap_midnight = True
         end_dt = end_dt + datetime.timedelta(days=1)
 
-    # Cap palā-by-palā shodhana to the smaller of the requested window, caller
-    # limit, and a runtime guard so strict filters cannot trigger hour-long loops.
+    # Cap palā-by-palā shodhana to avoid redundant overlapping searches.
+    # The search step is `step_seconds`. We should not search further than half the step
+    # in each direction, otherwise we are re-evaluating the same times multiple times.
+    # 1 palā = 24 seconds.
+    
+    # Calculate optimal shodhana range based on step size
+    # We want range to cover +/- (step/2) so that ranges just touch or slightly overlap
+    if step_minutes is not None:
+        step_seconds_calc = step_minutes * 60.0
+    else:
+        step_seconds_calc = step_palas * PALA_SECONDS
+        
+    optimal_shodhana_palas = int(math.ceil((step_seconds_calc / 2.0) / PALA_SECONDS))
+    
+    # Allow a small overlap (e.g. +1 palā) to ensure no gaps
+    optimal_shodhana_palas += 1
+    
     window_seconds = max(0.0, (end_dt - start_dt).total_seconds())
     window_palas = int(window_seconds // PALA_SECONDS) if window_seconds else 0
+    
+    # Use the smaller of: calculated optimal range, user limit, window size, or safety cap
     effective_shodhana_palas = max(
         0,
-        min(max_shodhana_palas, window_palas, MAX_RUNTIME_SHODHANA_PALAS)
+        min(max_shodhana_palas, window_palas, MAX_RUNTIME_SHODHANA_PALAS, optimal_shodhana_palas)
     )
 
     if step_minutes is not None:

@@ -9,13 +9,14 @@ import type {
   MajorEvent,
 } from '../types';
 import { geocodePlace } from '../services/api';
+import { FamilyStep } from './FamilyStep';
 import './MultiStepForm.css';
 
 interface MultiStepFormProps {
   onSubmit: (request: BTRRequest) => void;
 }
 
-type Step = 'mandatory' | 'traits' | 'events' | 'review';
+type Step = 'mandatory' | 'traits' | 'family' | 'events' | 'review';
 
 export function MultiStepForm({ onSubmit }: MultiStepFormProps) {
   const [currentStep, setCurrentStep] = useState<Step>('mandatory');
@@ -33,6 +34,7 @@ export function MultiStepForm({ onSubmit }: MultiStepFormProps) {
   const [tobWindow, setTobWindow] = useState(3.0);
   const [overrideStart, setOverrideStart] = useState('');
   const [overrideEnd, setOverrideEnd] = useState('');
+  const [prashnaMode, setPrashnaMode] = useState(false);
 
   // Physical traits (granular)
   const [heightValue, setHeightValue] = useState('');
@@ -50,6 +52,10 @@ export function MultiStepForm({ onSubmit }: MultiStepFormProps) {
   const [children, setChildren] = useState<ChildEvent[]>([{ date: '', notes: '' }]);
   const [careerEvents, setCareerEvents] = useState<CareerEvent[]>([{ date: '', role: '', description: '' }]);
   const [majorEvents, setMajorEvents] = useState<MajorEvent[]>([{ date: '', title: '', description: '' }]);
+  
+  // Family Details (siblings, parents)
+  const [siblings, setSiblings] = useState<{type: string, count: number}[]>([]);
+  const [parents, setParents] = useState<{relation: string, is_alive: boolean, death_date?: string}[]>([]);
 
   // ---------------------------------------------------------------------------
   // Validation and helpers
@@ -95,12 +101,25 @@ export function MultiStepForm({ onSubmit }: MultiStepFormProps) {
     return true;
   };
 
+  // Helper to format dates to DD-MM-YYYY for API
+  const formatDateToDDMMYYYY = (dateStr: string): string => {
+    if (!dateStr || !dateStr.trim()) return '';
+    // Input is YYYY-MM-DD from HTML input
+    const [year, month, day] = dateStr.trim().split('-');
+    if (year && month && day) {
+      return `${day}-${month}-${year}`;
+    }
+    return dateStr; // fallback
+  };
+
   const handleNext = () => {
     if (currentStep === 'mandatory') {
       if (validateMandatory()) {
         setCurrentStep('traits');
       }
     } else if (currentStep === 'traits') {
+      setCurrentStep('family');
+    } else if (currentStep === 'family') {
       setCurrentStep('events');
     } else if (currentStep === 'events') {
       setCurrentStep('review');
@@ -110,8 +129,10 @@ export function MultiStepForm({ onSubmit }: MultiStepFormProps) {
   const handleBack = () => {
     if (currentStep === 'traits') {
       setCurrentStep('mandatory');
-    } else if (currentStep === 'events') {
+    } else if (currentStep === 'family') {
       setCurrentStep('traits');
+    } else if (currentStep === 'events') {
+      setCurrentStep('family');
     } else if (currentStep === 'review') {
       setCurrentStep('events');
     }
@@ -186,29 +207,38 @@ export function MultiStepForm({ onSubmit }: MultiStepFormProps) {
     const normalizeEvents = <T extends { date?: string | null }>(events: T[]) =>
       events
         .filter((e) => e.date && e.date.trim())
-        .map((e) => ({ ...e, date: e.date!.trim() }));
+        .map((e) => ({ ...e, date: formatDateToDDMMYYYY(e.date!.trim()) }));
 
     const normalizedMarriages = normalizeEvents(marriages) as MarriageEvent[];
     const normalizedChildren = normalizeEvents(children) as ChildEvent[];
     const normalizedCareer = normalizeEvents(careerEvents) as CareerEvent[];
     const normalizedMajor = normalizeEvents(majorEvents) as MajorEvent[];
+    
+    const normalizedParents = parents.map(p => ({
+        ...p,
+        death_date: p.death_date ? formatDateToDDMMYYYY(p.death_date) : undefined
+    }));
 
     const optionalEvents: LifeEvents | null = (normalizedMarriages.length ||
       normalizedChildren.length ||
       normalizedCareer.length ||
-      normalizedMajor.length)
+      normalizedMajor.length ||
+      siblings.length ||
+      normalizedParents.length)
       ? {
           ...(normalizedMarriages.length ? { marriages: normalizedMarriages, marriage: normalizedMarriages[0] } : {}),
           ...(normalizedChildren.length ? { children: normalizedChildren } : {}),
           ...(normalizedCareer.length ? { career: normalizedCareer } : {}),
           ...(normalizedMajor.length ? { major: normalizedMajor } : {}),
+          ...(siblings.length ? { siblings } : {}),
+          ...(normalizedParents.length ? { parents: normalizedParents } : {}),
         }
       : null;
 
     const validTzOffset = (typeof tzOffset === 'number' && !isNaN(tzOffset)) ? tzOffset : 5;
 
     const request: BTRRequest = {
-      dob: dob.trim(),
+      dob: formatDateToDDMMYYYY(dob.trim()),
       pob_text: pob.trim(),
       tz_offset_hours: validTzOffset,
       approx_tob: {
@@ -220,6 +250,7 @@ export function MultiStepForm({ onSubmit }: MultiStepFormProps) {
         start: overrideStart,
         end: overrideEnd,
       } : null,
+      prashna_mode: prashnaMode,
       optional_traits: optionalTraits,
       optional_events: optionalEvents,
     };
@@ -307,16 +338,20 @@ export function MultiStepForm({ onSubmit }: MultiStepFormProps) {
           <div className="step-number">1</div>
           <div className="step-label">Mandatory Info</div>
         </div>
-        <div className={`progress-step ${currentStep === 'traits' ? 'active' : ['events', 'review'].includes(currentStep) ? 'completed' : ''}`}>
+        <div className={`progress-step ${currentStep === 'traits' ? 'active' : ['family', 'events', 'review'].includes(currentStep) ? 'completed' : ''}`}>
           <div className="step-number">2</div>
           <div className="step-label">Physical Traits</div>
         </div>
-        <div className={`progress-step ${currentStep === 'events' ? 'active' : currentStep === 'review' ? 'completed' : ''}`}>
+        <div className={`progress-step ${currentStep === 'family' ? 'active' : ['events', 'review'].includes(currentStep) ? 'completed' : ''}`}>
           <div className="step-number">3</div>
+          <div className="step-label">Family</div>
+        </div>
+        <div className={`progress-step ${currentStep === 'events' ? 'active' : currentStep === 'review' ? 'completed' : ''}`}>
+          <div className="step-number">4</div>
           <div className="step-label">Life Events</div>
         </div>
         <div className={`progress-step ${currentStep === 'review' ? 'active' : ''}`}>
-          <div className="step-number">4</div>
+          <div className="step-number">5</div>
           <div className="step-label">Review & Submit</div>
         </div>
       </div>
@@ -467,6 +502,20 @@ export function MultiStepForm({ onSubmit }: MultiStepFormProps) {
                   </div>
                 )}
               </div>
+              {tobMode === 'unknown' && (
+                <div className="form-group checkbox-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={prashnaMode}
+                      onChange={(e) => setPrashnaMode(e.target.checked)}
+                    />
+                    <strong>Prashna / Query Mode (Nashta Jataka)</strong>
+                    <br/>
+                    <small style={{fontWeight: 'normal'}}>Use current time/location for chart reconstruction if birth time is completely unknown.</small>
+                  </label>
+                </div>
+              )}
               <div>
                 <label>Time Range Override (optional):</label>
                 <div className="time-range-override">
@@ -603,6 +652,22 @@ export function MultiStepForm({ onSubmit }: MultiStepFormProps) {
                 />
               </div>
             </fieldset>
+            <div className="step-actions">
+              <button className="btn-secondary" onClick={handleBack}>Back</button>
+              <button className="btn-primary" onClick={handleNext}>Continue to Family Details</button>
+            </div>
+          </div>
+        )}
+
+        {currentStep === 'family' && (
+          <div className="step-panel">
+            <FamilyStep 
+              data={{ events: { siblings, parents } }} 
+              updateData={(newData) => {
+                if (newData.events?.siblings) setSiblings(newData.events.siblings);
+                if (newData.events?.parents) setParents(newData.events.parents);
+              }} 
+            />
             <div className="step-actions">
               <button className="btn-secondary" onClick={handleBack}>Back</button>
               <button className="btn-primary" onClick={handleNext}>Continue to Life Events</button>

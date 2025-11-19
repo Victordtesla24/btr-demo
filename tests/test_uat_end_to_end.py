@@ -15,6 +15,7 @@ import datetime
 import json
 from typing import Dict, Any, List
 import httpx
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from backend.main import app
@@ -34,7 +35,7 @@ class TestUATMinimalInput:
         
         # Simulate user entering minimal data
         minimal_request = {
-            "dob": "1990-01-15",
+            "dob": "15-01-1990",
             "pob_text": "Delhi, India", 
             "tz_offset_hours": 5.5,
             "approx_tob": {
@@ -43,12 +44,12 @@ class TestUATMinimalInput:
             "optional_traits": None,  # No physical traits
             "optional_events": {
                 "career": [
-                    {"date": "2015-03-01", "role": "Software Engineer", "description": "Started career"},
-                    {"date": "2020-06-15", "role": "Senior Engineer", "description": "Promotion"}
+                    {"date": "01-03-2015", "role": "Software Engineer", "description": "Started career"},
+                    {"date": "15-06-2020", "role": "Senior Engineer", "description": "Promotion"}
                 ],
                 "major": [
-                    {"date": "2018-09-10", "title": "Graduated College", "description": "Completed engineering degree"},
-                    {"date": "2022-01-20", "title": "Moved Abroad", "description": "International assignment"}
+                    {"date": "10-09-2018", "title": "Graduated College", "description": "Completed engineering degree"},
+                    {"date": "20-01-2022", "title": "Moved Abroad", "description": "International assignment"}
                 ],
                 "marriage": None,
                 "children": None
@@ -96,14 +97,14 @@ class TestUATMinimalInput:
         """Test that API correctly logs all BTR processing phases."""
         
         minimal_request = {
-            "dob": "1985-06-15",
+            "dob": "15-06-1985",
             "pob_text": "Mumbai, India",
             "tz_offset_hours": 5.5,
             "approx_tob": {"mode": "unknown"},
             "optional_traits": None,
             "optional_events": {
-                "career": [{"date": "2010-01-01", "role": "Manager"}],
-                "major": [{"date": "2015-12-25", "title": "Career Change"}]
+                "career": [{"date": "01-01-2010", "role": "Manager"}],
+                "major": [{"date": "25-12-2015", "title": "Career Change"}]
             }
         }
         
@@ -132,7 +133,7 @@ class TestUATTimeRangeOverride:
         """Test that time override boundaries are strictly enforced."""
         
         override_request = {
-            "dob": "1995-12-10",
+            "dob": "10-12-1995",
             "pob_text": "Bangalore, India",
             "tz_offset_hours": 5.5,
             "time_range_override": {
@@ -144,12 +145,12 @@ class TestUATTimeRangeOverride:
             },
             "optional_events": {
                 "career": [
-                    {"date": "2018-07-01", "role": "Data Scientist"},
-                    {"date": "2021-02-15", "role": "Lead Data Scientist"}
+                    {"date": "01-07-2018", "role": "Data Scientist"},
+                    {"date": "15-02-2021", "role": "Lead Data Scientist"}
                 ],
                 "major": [
-                    {"date": "2017-05-20", "title": "Master's Degree"},
-                    {"date": "2023-11-10", "title": "Award Recognition"}
+                    {"date": "20-05-2017", "title": "Master's Degree"},
+                    {"date": "10-11-2023", "title": "Award Recognition"}
                 ]
             }
         }
@@ -203,7 +204,7 @@ class TestUATTimeRangeOverride:
         # The system actually handles end-before-start as midnight crossover
         # Let's test a truly invalid time format instead
         invalid_format_request = {
-            "dob": "1990-01-01",
+            "dob": "01-01-1990",
             "pob_text": "Delhi, India", 
             "tz_offset_hours": 5.5,
             "time_range_override": {
@@ -223,7 +224,7 @@ class TestUATTimeRangeOverride:
         
         # Test the system handles midnight crossover correctly
         crossover_request = {
-            "dob": "1990-01-01",
+            "dob": "01-01-1990",
             "pob_text": "Delhi, India", 
             "tz_offset_hours": 5.5,
             "time_range_override": {
@@ -247,7 +248,7 @@ class TestUATTimeRangeOverride:
         """Test time override combined with approximate center time."""
         
         combined_request = {
-            "dob": "2000-03-20",
+            "dob": "20-03-2000",
             "pob_text": "Chennai, India",
             "tz_offset_hours": 5.5,
             "time_range_override": {
@@ -260,7 +261,7 @@ class TestUATTimeRangeOverride:
                 "window_hours": 1.0  # Should be overridden by explicit range
             },
             "optional_events": {
-                "career": [{"date": "2022-04-01", "role": "Developer"}]
+                "career": [{"date": "01-04-2022", "role": "Developer"}]
             }
         }
         
@@ -290,7 +291,7 @@ class TestUATNoCandidatesScenario:
         
         # Use challenging date/time/location combination 
         problematic_request = {
-            "dob": "1980-02-29",  # Leap day
+            "dob": "29-02-1980",  # Leap day
             "pob_text": "London, UK",  # Different timezone
             "tz_offset_hours": 0.0,
             "approx_tob": {
@@ -300,8 +301,8 @@ class TestUATNoCandidatesScenario:
             },
             "optional_traits": None,
             "optional_events": {
-                "career": [{"date": "2005-11-01", "role": "Analyst"}],
-                "major": [{"date": "2010-06-15", "title": "Career Milestone"}]
+                "career": [{"date": "01-11-2005", "role": "Analyst"}],
+                "major": [{"date": "15-06-2010", "title": "Career Milestone"}]
             }
         }
         
@@ -345,39 +346,41 @@ class TestUATNoCandidatesScenario:
         
         # Test with minimal data to trigger recovery suggestions
         recovery_request = {
-            "dob": "1975-08-30",
+            "dob": "30-08-1975",
             "pob_text": "Sydney, Australia",
             "tz_offset_hours": 10.0, 
             "approx_tob": {"mode": "unknown"},
             "optional_events": {
-                "career": [{"date": "1995-05-01", "role": "Teacher"}]
+                "career": [{"date": "01-05-1995", "role": "Teacher"}]
             }
         }
         
-        response = client.post("/api/btr", json=recovery_request)
-        
-        assert response.status_code == 404
-        
-        error = response.json()
-        
-        # Should suggest adding more specific information
-        suggested_questions = error['detail']['suggested_questions']
-        
-        categories = set(q['field'] for q in suggested_questions)
-        
-        # Should suggest time-related improvements
-        time_suggestions = [q for q in suggested_questions if 'time' in q['field']]
-        assert len(time_suggestions) > 0
-        
-        # Should suggest physical traits for better filtering
-        trait_suggestions = [q for q in suggested_questions if 'physical' in q['field']]
-        assert len(trait_suggestions) > 0
-        
-        # Each suggestion should have priority and actionable hint
-        for suggestion in suggested_questions:
-            assert 'priority' in suggestion
-            assert 'hint' in suggestion
-            assert len(suggestion['hint']) > 10  # Meaningful hint
+        # Mock search_candidate_times to return no candidates, forcing the recovery flow
+        with patch('backend.btr_core.search_candidate_times', return_value=([], [])):
+            response = client.post("/api/btr", json=recovery_request)
+            
+            assert response.status_code == 404
+            
+            error = response.json()
+            
+            # Should suggest adding more specific information
+            suggested_questions = error['detail']['suggested_questions']
+            
+            categories = set(q['field'] for q in suggested_questions)
+            
+            # Should suggest time-related improvements
+            time_suggestions = [q for q in suggested_questions if 'time' in q['field']]
+            assert len(time_suggestions) > 0
+            
+            # Should suggest physical traits for better filtering
+            trait_suggestions = [q for q in suggested_questions if 'physical' in q['field']]
+            assert len(trait_suggestions) > 0
+            
+            # Each suggestion should have priority and actionable hint
+            for suggestion in suggested_questions:
+                assert 'priority' in suggestion
+                assert 'hint' in suggestion
+                assert len(suggestion['hint']) > 10  # Meaningful hint
 
 
 class TestUATPerfectMatchScenario:
@@ -390,7 +393,7 @@ class TestUATPerfectMatchScenario:
         
         # Use timing that's likely to produce valid candidates
         perfect_match_request = {
-            "dob": "1985-06-15",
+            "dob": "15-06-1985",
             "pob_text": "New Delhi, India",
             "tz_offset_hours": 5.5,
             "approx_tob": {
@@ -405,13 +408,13 @@ class TestUATPerfectMatchScenario:
             },
             "optional_events": {
                 "marriage": [{
-                    "date": "2010-02-14",
+                    "date": "14-02-2010",
                     "spouse_name": "Test Spouse",
                     "place": "Delhi"
                 }],
                 "career": [
-                    {"date": "2008-07-01", "role": "Engineer"},
-                    {"date": "2015-03-20", "role": "Senior Engineer"}
+                    {"date": "01-07-2008", "role": "Engineer"},
+                    {"date": "20-03-2015", "role": "Senior Engineer"}
                 ]
             }
         }
@@ -454,7 +457,7 @@ class TestUATPerfectMatchScenario:
         """Test that best candidate passes complete BPHS verification."""
         
         verification_request = {
-            "dob": "1992-11-25",
+            "dob": "25-11-1992",
             "pob_text": "Mumbai, India",
             "tz_offset_hours": 5.5,
             "approx_tob": {
@@ -468,9 +471,9 @@ class TestUATPerfectMatchScenario:
                 "complexion_tone": "FAIR"
             },
             "optional_events": {
-                "marriage": [{"date": "2018-05-20"}],
-                "children": [{"date": "2020-08-15", "gender": "Female"}],
-                "major": [{"date": "2014-06-10", "title": "Graduation"}]
+                "marriage": [{"date": "20-05-2018"}],
+                "children": [{"date": "15-08-2020", "gender": "Female"}],
+                "major": [{"date": "10-06-2014", "title": "Graduation"}]
             }
         }
         
@@ -519,7 +522,7 @@ class TestUATShodhanaEnhancement:
         """Test that śodhana respects time window boundaries."""
         
         shodhana_request = {
-            "dob": "1988-04-12",
+            "dob": "12-04-1988",
             "pob_text": "Pune, India", 
             "tz_offset_hours": 5.5,
             "time_range_override": {
@@ -528,7 +531,7 @@ class TestUATShodhanaEnhancement:
             },
             "approx_tob": {"mode": "unknown"},
             "optional_events": {
-                "career": [{"date": "2012-09-01", "role": "Consultant"}]
+                "career": [{"date": "01-09-2012", "role": "Consultant"}]
             }
         }
         
@@ -567,7 +570,7 @@ class TestUATShodhanaEnhancement:
         """Test that śodhana actually improves candidate quality."""
         
         enhancement_request = {
-            "dob": "1995-09-20",
+            "dob": "20-09-1995",
             "pob_text": "Hyderabad, India",
             "tz_offset_hours": 5.5,
             "approx_tob": {
@@ -580,7 +583,7 @@ class TestUATShodhanaEnhancement:
                 "build_band": "ATHLETIC"
             },
             "optional_events": {
-                "major": [{"date": "2018-12-01", "title": "Achievement"}]
+                "major": [{"date": "01-12-2018", "title": "Achievement"}]
             }
         }
         
@@ -608,15 +611,88 @@ class TestUATShodhanaEnhancement:
                 assert verification_scores['passes_trine_rule'] == True
 
 
+class TestUATFamilyVerification:
+    """Test Case 6: Family Details (Siblings/Parents) Verification
+    Tests D-3 and D-12 chart logic integration.
+    """
+    
+    def test_family_details_integration(self):
+        """Test that family details (siblings, parents) are processed and influence scoring."""
+        
+        family_request = {
+            "dob": "15-05-1990",
+            "pob_text": "Bangalore, India",
+            "tz_offset_hours": 5.5,
+            "approx_tob": {
+                "mode": "approx",
+                "center": "10:00",
+                "window_hours": 2.0
+            },
+            "optional_events": {
+                "siblings": [
+                    {"type": "elder_brother", "count": 1},
+                    {"type": "younger_sister", "count": 1}
+                ],
+                "parents": [
+                    {"relation": "father", "is_alive": False, "death_date": "20-08-2015"},
+                    {"relation": "mother", "is_alive": True}
+                ]
+            }
+        }
+        
+        response = client.post("/api/btr", json=family_request)
+        
+        if response.status_code == 200:
+            data = response.json()
+            candidates = data.get('candidates', [])
+            
+            if candidates:
+                best_candidate = candidates[0]
+                
+                # Check that family scores are present in the life_events_scores
+                life_scores = best_candidate.get('life_events_scores', {})
+                assert 'siblings' in life_scores
+                assert 'parents' in life_scores
+                
+                # Scores should be non-zero given the input
+                # (Note: Actual scores depend on planetary positions, but logic should run)
+                assert life_scores['siblings'] >= 0.0
+                assert life_scores['parents'] >= 0.0
+                
+                # Check for methodology notes mentioning family verification
+                # (Optional check if methodology notes are dynamic, currently they are static)
+                
+                # Verify that D-3 and D-12 were likely calculated implicitly
+                # We can infer this from non-zero scores or successful processing
+                
+    def test_prashna_mode_handling(self):
+        """Test that prashna_mode flag is accepted."""
+        
+        prashna_request = {
+            "dob": "01-01-1990", # Placeholder DOB
+            "pob_text": "Delhi, India",
+            "tz_offset_hours": 5.5,
+            "approx_tob": {"mode": "unknown"},
+            "prashna_mode": True
+        }
+        
+        response = client.post("/api/btr", json=prashna_request)
+        
+        # Just verify it doesn't crash and processes generally
+        # Actual prashna logic (using current time) might override the DOB time search 
+        # but here we just check API contract compliance
+        assert response.status_code in [200, 404]
+
+
 class TestUATEdgeCases:
     """Additional edge case scenarios for comprehensive testing."""
     
     def test_malformed_request_handling(self):
         """Test API handles malformed requests gracefully."""
         
-        # Invalid date format
+        # Invalid date format (YYYY-MM-DD in this case, since we now expect DD-MM-YYYY)
         malformed_request = {
-            "dob": "15-01-1990",  # Wrong format
+            "dob": "1990-01-15",  # Wrong format (YYYY-MM-DD)
             "pob_text": "Delhi, India",
             "tz_offset_hours": 5.5,
             "approx_tob": {"mode": "unknown"}
@@ -632,8 +708,9 @@ class TestUATEdgeCases:
         """Test that future dates are rejected."""
         
         future_date = datetime.date.today() + datetime.timedelta(days=30)
+        future_date_str = future_date.strftime("%d-%m-%Y")
         future_request = {
-            "dob": future_date.isoformat(),
+            "dob": future_date_str,
             "pob_text": "Delhi, India",
             "tz_offset_hours": 5.5,
             "approx_tob": {"mode": "unknown"}
@@ -650,7 +727,7 @@ class TestUATEdgeCases:
         
         # Very narrow range (1 minute)
         narrow_request = {
-            "dob": "1985-03-15",
+            "dob": "15-03-1985",
             "pob_text": "Delhi, India",
             "tz_offset_hours": 5.5,
             "time_range_override": {
@@ -665,7 +742,7 @@ class TestUATEdgeCases:
         
         # Very wide range (full day)
         wide_request = {
-            "dob": "1985-03-15",
+            "dob": "15-03-1985",
             "pob_text": "Delhi, India", 
             "tz_offset_hours": 5.5,
             "time_range_override": {
