@@ -186,32 +186,50 @@ export function CandidateCard({ candidate, index, isBest = false }: CandidateCar
         )}
         {candidate.special_lagnas && (
           <div className="special-lagnas-section">
-            <h4>Special Lagnas (BPHS 4.18-28)</h4>
+            <h4>Special Lagnas (BPHS 4.18-28) <span className="verse-info">with interpretations</span></h4>
             <div className="lagnas-grid">
-              <div className="lagna-item">
-                <span className="lagna-label">Bhava Lagna (BPHS 4.18):</span>
+              <div className="lagna-item" title="Bhava Lagna: From sunrise, every 5 ghatis = 1 sign progression. Indicates fortune and prosperity timing.">
+                <span className="lagna-label">
+                  Bhava Lagna 
+                  <span className="verse-ref">(BPHS 4.18)</span>
+                </span>
                 <span className="lagna-value">{degToSign(candidate.special_lagnas.bhava_lagna)}</span>
+                <span className="lagna-interpretation">Fortune timing</span>
               </div>
-              <div className="lagna-item">
-                <span className="lagna-label">Hora Lagna (BPHS 4.20-21):</span>
+              <div className="lagna-item" title="Hora Lagna: Every 2.5 ghatis = 1 sign progression. Shows wealth accumulation and financial patterns.">
+                <span className="lagna-label">
+                  Hora Lagna 
+                  <span className="verse-ref">(BPHS 4.20-21)</span>
+                </span>
                 <span className="lagna-value">{degToSign(candidate.special_lagnas.hora_lagna)}</span>
+                <span className="lagna-interpretation">Wealth patterns</span>
               </div>
-              <div className="lagna-item">
-                <span className="lagna-label">Ghati Lagna (BPHS 4.22-24):</span>
+              <div className="lagna-item" title="Ghati Lagna: 1 ghati = 1 sign, 1 pala = 2 degrees from sunrise. Provides precise event timing (±5-10 minutes).">
+                <span className="lagna-label">
+                  Ghati Lagna 
+                  <span className="verse-ref">(BPHS 4.22-24)</span>
+                </span>
                 <span className="lagna-value">{degToSign(candidate.special_lagnas.ghati_lagna)}</span>
+                <span className="lagna-interpretation">Precise timing</span>
               </div>
-              <div className="lagna-item">
-                <span className="lagna-label">Varnada Lagna (BPHS 4.26-28):</span>
+              <div className="lagna-item" title="Varnada Lagna: Calculated from Janma + Hora lagnas. Always results in ODD sign. Reveals longevity and life span.">
+                <span className="lagna-label">
+                  Varnada Lagna 
+                  <span className="verse-ref">(BPHS 4.26-28)</span>
+                </span>
                 <span className="lagna-value">{degToSign(candidate.special_lagnas.varnada_lagna)}</span>
+                <span className="lagna-interpretation">Longevity indicator</span>
               </div>
             </div>
-            <div className="bphs-explanation">
+            <div className="bphs-explanation interactive">
               <p className="explanation-text">
-                <strong>Special Lagnas:</strong> These supplementary lagnas provide additional verification 
-                per BPHS Verses 4.18-28. Bhava Lagna (every 5 ghatis), Hora Lagna (every 2.5 ghatis), 
-                Ghati Lagna (1 ghati = 1 sign), and Varnada Lagna (calculated from Janma + Hora lagnas) 
-                are used for consistency checks.
+                <strong>Special Lagnas Verification:</strong> These supplementary lagnas provide multi-layered verification per BPHS Chapter 4. Each addresses different life aspects - Bhava for fortune periods, Hora for wealth cycles, Ghati for precise timing (±5-10 min accuracy), and Varnada for longevity assessment.
               </p>
+              <div className="verification-levels">
+                <span className="verification-item">✓ Primary: Lagna + Pranapada (BPHS 4.10)</span>
+                <span className="verification-item">✓ Core: BPHS 4.6 degree matching</span>
+                <span className="verification-item">✓ Enhanced: Special Lagnas analysis</span>
+              </div>
             </div>
           </div>
         )}

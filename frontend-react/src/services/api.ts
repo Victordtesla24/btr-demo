@@ -70,7 +70,7 @@ export async function calculateBTR(request: BTRRequest): Promise<BTRResponse> {
             .join('; ');
         } else if (typeof detail === 'string') {
           errorMessage = detail;
-        } else if (typeof detail === 'object') {
+        } else if (typeof detail === 'object' && detail !== null) {
           errorMessage = detail.message || errorMessage;
           rejectionSummary = detail.rejection_summary;
           searchWindow = detail.search_window;

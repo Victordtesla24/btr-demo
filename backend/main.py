@@ -245,6 +245,10 @@ class RejectedCandidate(BaseModel):
     time_local: str
     lagna_deg: float
     pranapada_deg: float
+    delta_pp_deg: Optional[float] = None
+    delta_madhya_pp_deg: Optional[float] = None
+    delta_gulika_deg: Optional[float] = None
+    delta_moon_deg: Optional[float] = None
     passes_trine_rule: bool
     passes_purification: bool
     non_human_classification: Optional[str] = None
@@ -428,6 +432,101 @@ def _analyze_input_completeness(request: BTRRequest) -> Dict[str, Any]:
         "missing_categories": [s["field"] for s in suggestions]
     }
 
+def _generate_bphs_specific_questions(rejections: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
+    """Generate BPHS-specific questions based on rejection patterns."""
+    if not rejections:
+        return []
+    
+    bphs_questions = []
+    reason_counts = {}
+    
+    # Analyze rejection patterns
+    for rej in rejections:
+        reason = rej.get("rejection_reason", "Unknown")
+        reason_counts[reason] = reason_counts.get(reason, 0) + 1
+    
+    # Find the most common rejection reasons
+    top_reasons = sorted(reason_counts.items(), key=lambda x: x[1], reverse=True)
+    
+    for reason, count in top_reasons[:3]:
+        if "trine rule" in reason.lower() and count > 5:
+            # Many candidates failing BPHS 4.10 trine rule
+            bphs_questions.append({
+                "field": "bphs_trine_rule_failure",
+                "priority": 1,
+                "message": f"Most candidates fail BPHS 4.10 trine rule - verify birth characteristics",
+                "hint": "The Trine Rule (BPHS 4.10) is mandatory for human birth. Add distinctive physical traits to help identify the correct human candidate."
+            })
+        elif "padekyata" in reason.lower() and count > 3:
+            # Degree matching issues - suggest time precision
+            bphs_questions.append({
+                "field": "bphs_degree_matching",
+                "priority": 2,
+                "message": f"Degree matching failing (BPHS 4.6) - narrow time window",
+                "hint": "Padekyatā requires precise degree alignment. Consider a more specific birth time window."
+            })
+        elif "non-human" in reason.lower() and count > 5:
+            # Many non-human classifications
+            bphs_questions.append({
+                "field": "bphs_non_human_many",
+                "priority": 1,
+                "message": f"Many candidates classified as non-human (BPHS 4.11)",
+                "hint": "Add physical traits and life events to help distinguish the human birth candidate per BPHS 4.10-4.11."
+            })
+        elif "purification" in reason.lower():
+            # Verification anchor issues
+            bphs_questions.append({
+                "field": "bphs_purification_anchor",
+                "priority": 3,
+                "message": f"Purification anchor failing (BPHS 4.8)",
+                "hint": "Consider if birth time might be in a different planetary period (dasha) or add life events for verification."
+            })
+    
+    # If top candidates come close to passing BPHS rules
+    min_padekyata = None
+    min_moon = None
+    min_gulika = None
+    
+    for rej in rejections:
+        dp = rej.get("delta_pp_deg")
+        dm = rej.get("delta_moon_deg")
+        dg = rej.get("delta_gulika_deg")
+        
+        if dp is not None:
+            min_padekyata = dp if min_padekyata is None else min(min_padekyata, dp)
+        if dm is not None:
+            min_moon = dm if dm is None else min(min_moon, dm)
+        if dg is not None:
+            min_gulika = dg if min_gulika is None else min(min_gulika, dg)
+    
+    # Suggest precision improvements
+    if min_padekyata and min_padekyata < 1.0:
+        bphs_questions.append({
+            "field": "bphs_close_padekyata",
+            "priority": 2,
+            "message": f"Candidates very close to degree matching (Δ={min_padekyata:.2f}°)",
+            "hint": "Some candidates nearly match Padekyatā (BPHS 4.6). Add more physical traits for precise identification."
+        })
+    
+    if min_moon and min_moon < 2.0:
+        bphs_questions.append({
+            "field": "bphs_close_moon",
+            "priority": 3,
+            "message": f"Candidates close to Moon alignment (Δ={min_moon:.2f}°)",
+            "hint": "Moon alignment is part of BPHS 4.8 verification. Life events can help confirm the best candidate."
+        })
+    
+    # Special lagna suggestions
+    if len(rejections) > 10:
+        bphs_questions.append({
+            "field": "bphs_special_lagnas",
+            "priority": 4,
+            "message": "Consider special lagna analysis (BPHS 4.18-28)",
+            "hint": "Bhava/Hora/Ghati/Varnada lagnas provide additional verification layers for complex cases."
+        })
+    
+    return bphs_questions
+
 def _summarize_rejections_for_response(
     rejections: list[Dict[str, Any]],
     window_start: str,
@@ -439,6 +538,24 @@ def _summarize_rejections_for_response(
     # If no suggested questions provided, analyze input completeness
     if suggested_questions is None:
         suggested_questions = _analyze_input_completeness(request)
+    
+    # Generate BPHS-specific questions based on rejection patterns
+    bphs_specific_questions = _generate_bphs_specific_questions(rejections)
+    
+    # Combine general and BPHS-specific questions, with BPHS taking priority
+    base_questions = suggested_questions.get("suggested_questions", [])
+    combined_questions = []
+    
+    # Add BPHS-specific questions first (higher priority)
+    bphs_used_fields = set()
+    for bphs_q in bphs_specific_questions:
+        combined_questions.append(bphs_q)
+        bphs_used_fields.add(bphs_q["field"])
+    
+    # Add remaining general questions, avoiding duplicates
+    for general_q in base_questions:
+        if general_q["field"] not in bphs_used_fields:
+            combined_questions.append(general_q)
     
     reason_counts: Dict[str, int] = {}
     min_padekyata = None
@@ -468,7 +585,7 @@ def _summarize_rejections_for_response(
         delta_bits.append(f"closest Gulika Δ={min_gulika:.2f}°")
     delta_str = "; ".join(delta_bits)
 
-    # Enhanced rejection summary with dynamic suggested questions
+    # Enhanced rejection summary with dynamic BPHS-specific suggested questions
     rejection_summary = {
         "reason_counts": reason_counts,
         "window": {"start": window_start, "end": window_end},
@@ -477,13 +594,19 @@ def _summarize_rejections_for_response(
             "moon_delta_deg": min_moon,
             "gulika_delta_deg": min_gulika
         },
-        "suggested_questions": suggested_questions.get("suggested_questions", []),
+        "suggested_questions": combined_questions,
         "input_completeness_score": suggested_questions.get("input_completeness_score", 0),
-        "missing_categories": suggested_questions.get("missing_categories", []),
+        "missing_categories": [s["field"] for s in combined_questions],
+        "bphs_insights": {
+            "top_rejection_reasons": top_reasons,
+            "candidates_analyzed": len(rejections),
+            "bphs_violations": [reason for reason, count in top_reasons if "BPHS" in reason]
+        },
         "suggestions": [
-            "Confirm the location and ensure the time zone matches the geocoded offset.",
-            "Provide at least two dated life events (marriage, child, career, or major events).",
-            "Narrow or widen the search window based on your certainty of the birth time."
+            "Add physical traits based on BPHS Chapter 2 for better verification",
+            "Include life events validated by BPHS Chapter 12 dasha timing",
+            "Consider special lagna analysis (BPHS 4.18-28) for complex cases",
+            "Verify birth time window if most candidates fail the Trine Rule (BPHS 4.10)"
         ]
     }
 
@@ -641,6 +764,24 @@ async def btr(request: BTRRequest):
     if request.time_range_override:
         start_time = request.time_range_override.start
         end_time = request.time_range_override.end
+        
+        # Validate time format
+        try:
+            start_parts = start_time.split(':')
+            end_parts = end_time.split(':')
+            if len(start_parts) != 2 or len(end_parts) != 2:
+                raise ValueError("Time format must be HH:MM")
+            
+            start_hour, start_min = int(start_parts[0]), int(start_parts[1])
+            end_hour, end_min = int(end_parts[0]), int(end_parts[1])
+            
+            if not (0 <= start_hour < 24 and 0 <= start_min < 60):
+                raise ValueError(f"Start time hour must be 0-23 and minute must be 0-59. Got {start_hour}:{start_min}")
+            if not (0 <= end_hour < 24 and 0 <= end_min < 60):
+                raise ValueError(f"End time hour must be 0-23 and minute must be 0-59. Got {end_hour}:{end_min}")
+                
+        except (ValueError, IndexError) as e:
+            raise HTTPException(status_code=400, detail=f"Invalid time format in time_range_override: {str(e)}")
     else:
         if request.approx_tob.mode == "unknown":
             start_time = "00:00"
@@ -772,8 +913,9 @@ async def btr(request: BTRRequest):
                 "rejections": len(rejections),
                 "note": "expanded_window_full_day"
             })
+            # Update start_time and end_time to be used in the next fallback if needed
+            start_time, end_time = fallback_start, fallback_end
             if candidates:
-                start_time, end_time = fallback_start, fallback_end
                 strict_bphs_used = True
 
         # Fallback 2: relax palā tolerance (strict_bphs=False) while keeping BPHS trine rule intact
@@ -888,7 +1030,8 @@ async def btr(request: BTRRequest):
     # Generate BPHS methodology notes
     methodology_notes = (
         "BPHS Birth Time Rectification Methodology:\n"
-        "Source: Brihat Parashar Hora Shastra - Chapter 4 (लग्नाध्याय)\n\n"
+        "Source: Brihat Parashar Hora Shastra - Chapter 4 (लग्नाध्याय)\n"
+        "Adhyāya 4: लग्नाध्याय (Lagna Chapter)\n\n"
         "Key Verses Implemented:\n"
         "- Gulika Calculation: BPHS 4.1-4.3 (गुलिक गणना)\n"
         "- Pranapada (Madhya): BPHS 4.5 (घटी चतुर्गुणा...)\n"

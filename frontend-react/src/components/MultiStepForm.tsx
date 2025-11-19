@@ -517,9 +517,9 @@ export function MultiStepForm({ onSubmit }: MultiStepFormProps) {
                   <div className="height-row">
                     <select value={heightBand} onChange={(e) => setHeightBand(e.target.value)}>
                       <option value="">Select band</option>
-                      <option value="TALL">Tall</option>
-                      <option value="MEDIUM">Medium</option>
-                      <option value="SHORT">Short</option>
+                      <option value="TALL">Tall (Aries, Taurus, Leo, Capricorn)</option>
+                      <option value="MEDIUM">Medium (Gemini, Virgo, Libra, Aquarius, Pisces)</option>
+                      <option value="SHORT">Short (Cancer, Scorpio)</option>
                     </select>
                     <select value={heightUnit} onChange={(e) => setHeightUnit(e.target.value as 'cm' | 'ft_in')}>
                       <option value="cm">cm</option>
@@ -552,7 +552,7 @@ export function MultiStepForm({ onSubmit }: MultiStepFormProps) {
                       />
                     </div>
                   )}
-                  <small className="verse-note">BPHS 2.6-2.23 maps large/medium/small bodies to rāśis; numeric entry sharpens the band.</small>
+                  <small className="verse-note">BPHS 2.6-2.23: Fixed signs = large, Dual signs = medium, Movable signs = small (except Cancer/Scorpio = short)</small>
                 </div>
                 <div>
                   <label htmlFor="build" title="BPHS 2.3-2.5: lagnesh and planets in lagna shape the body">Build / Musculature:</label>
@@ -562,10 +562,10 @@ export function MultiStepForm({ onSubmit }: MultiStepFormProps) {
                     onChange={(e) => setBuildBand(e.target.value)}
                   >
                     <option value="">Select build</option>
-                    <option value="ATHLETIC">Athletic (Mars/Jupiter influence)</option>
-                    <option value="SLIM">Slim (Mercury/Venus influence)</option>
-                    <option value="MEDIUM">Medium / Balanced</option>
-                    <option value="HEAVY">Heavy (Saturn influence)</option>
+                    <option value="ATHLETIC">Athletic (Mars/Saturn in lagna)</option>
+                    <option value="SLIM">Slim (Mercury/Venus in lagna)</option>
+                    <option value="MEDIUM">Medium (Jupiter in lagna)</option>
+                    <option value="HEAVY">Heavy (Moon/Saturn aspecting lagna)</option>
                   </select>
                   <input
                     type="text"
@@ -573,6 +573,7 @@ export function MultiStepForm({ onSubmit }: MultiStepFormProps) {
                     value={bodyFrame}
                     onChange={(e) => setBodyFrame(e.target.value)}
                   />
+                  <small className="verse-note">BPHS 2.3-2.5: Planets in lagna determine build. Mars = muscular, Saturn = heavy, Mercury = slender</small>
                 </div>
                 <div>
                   <label htmlFor="complexion" title="BPHS 2.5, 2.16: complexion by planets in lagna">Complexion tone:</label>
@@ -582,11 +583,13 @@ export function MultiStepForm({ onSubmit }: MultiStepFormProps) {
                     onChange={(e) => setComplexionTone(e.target.value)}
                   >
                     <option value="">Select complexion</option>
-                    <option value="FAIR">Fair</option>
-                    <option value="WHEATISH">Wheatish</option>
-                    <option value="DARK">Dark</option>
+                    <option value="FAIR">Fair (Moon, Venus)</option>
+                    <option value="WHEATISH">Wheatish (Jupiter)</option>
+                    <option value="REDDISH">Reddish-dark (Sun, Mars)</option>
+                    <option value="DARK">Dark (Saturn)</option>
+                    <option value="DULL_GREEN">Dull green (Mercury)</option>
                   </select>
-                  <small>Sun: reddish-dark, Moon: fair, Jupiter/Venus: wheatish (BPHS 2.5, 2.16).</small>
+                  <small className="verse-note">BPHS 2.5, 2.16: Sun/Mars = reddish, Moon/Venus = fair, Jupiter = yellowish-wheatish, Saturn = dark, Mercury = dull green</small>
                 </div>
               </div>
               <div>

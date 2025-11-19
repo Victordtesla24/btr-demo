@@ -1141,6 +1141,45 @@ def _get_sign_lord(sign: int) -> str:
     }
     return sign_lords[sign % 12]
 
+def calculate_upagrahas(sun_longitude: float) -> dict[str, float]:
+    """Calculate the longitudes of the five non-luminous planets (Upagrahas).
+    
+    BPHS Verses 3.53-56: dhumadyaprakashagrahanayanamaha
+    
+    Args:
+        sun_longitude: Sun's sidereal longitude in degrees.
+        
+    Returns:
+        Dict with keys: 'dhuma', 'vyatipata', 'parivesha', 'indrachapa', 'upaketu'
+    """
+    # BPHS 3.53: Dhuma = Sun + 4 signs, 13 degrees, 20 minutes
+    # 4 signs = 120 degrees. 13 degrees. 20 minutes = 13.333... degrees.
+    # Total = 133.333... degrees
+    dhuma = (sun_longitude + 133 + (20 / 60.0)) % 360.0
+    
+    # BPHS 3.54: Vyatipata = 12 signs - Dhuma
+    vyatipata = (360.0 - dhuma) % 360.0
+    
+    # BPHS 3.54: Parivesha = Vyatipata + 6 signs
+    parivesha = (vyatipata + 180.0) % 360.0
+    
+    # BPHS 3.55: Indrachapa (Kodanda) = 12 signs - Parivesha
+    indrachapa = (360.0 - parivesha) % 360.0
+    
+    # BPHS 3.55: Upaketu = Indrachapa + 16 degrees, 40 minutes
+    # 16 degrees, 40 minutes = 16.666... degrees
+    # The verse actually says to add 16d 40m, but also that adding 1 sign (30d) to Upaketu gives Sun.
+    # Let's use the check: Upaketu = Sun - 1 sign
+    upaketu = (sun_longitude - 30.0) % 360.0
+
+    return {
+        'dhuma': dhuma,
+        'vyatipata': vyatipata,
+        'parivesha': parivesha,
+        'indrachapa': indrachapa,
+        'upaketu': upaketu
+    }
+
 # ============================================================================
 # Physical Traits Scoring (BPHS Chapter 2)
 # ============================================================================
@@ -1363,12 +1402,12 @@ def score_physical_traits(lagna_deg: float, planets: dict[str, float], traits: d
         complexion_score = 0.0
         
         if complexion_trait == 'FAIR':
-            # Moon: fair and lustrous complexion
+            # Moon: fair and lustrous complexion (BPHS 2.5)
             if 'moon' in planets_in_lagna:
                 complexion_score = 80.0
             elif aspects_to_lagna.get('moon', 0) >= 75:
                 complexion_score = 60.0
-            # Venus: fair and bright complexion
+            # Venus: fair and bright complexion (BPHS 2.5)
             if 'venus' in planets_in_lagna:
                 complexion_score = max(complexion_score, 70.0)
             elif aspects_to_lagna.get('venus', 0) >= 50:
@@ -1378,7 +1417,7 @@ def score_physical_traits(lagna_deg: float, planets: dict[str, float], traits: d
                 complexion_score = max(complexion_score, 60.0)
                 
         elif complexion_trait == 'WHEATISH':
-            # Jupiter: wheatish/bright complexion
+            # Jupiter: wheatish/bright complexion (BPHS 2.16)
             if 'jupiter' in planets_in_lagna:
                 complexion_score = 80.0
             elif aspects_to_lagna.get('jupiter', 0) >= 75:
@@ -1390,25 +1429,34 @@ def score_physical_traits(lagna_deg: float, planets: dict[str, float], traits: d
             if aspects_to_lagna.get('sun', 0) >= 75:
                 complexion_score = max(complexion_score, 55.0)
                 
-        elif complexion_trait == 'DARK':
-            # Sun: dark and reddish complexion
+        elif complexion_trait == 'REDDISH':
+            # Sun: reddish-dark complexion (BPHS 2.5)
             if 'sun' in planets_in_lagna:
                 complexion_score = 80.0
             elif aspects_to_lagna.get('sun', 0) >= 75:
                 complexion_score = 60.0
-            # Mars: red and dark complexion
+            # Mars: red and reddish complexion (BPHS 2.5)
             if 'mars' in planets_in_lagna:
                 complexion_score = max(complexion_score, 75.0)
             elif aspects_to_lagna.get('mars', 0) >= 50:
                 complexion_score = max(complexion_score, 55.0)
-            # Saturn: dark and black complexion
-            if 'saturn' in planets_in_lagna:
-                complexion_score = max(complexion_score, 85.0)
-            elif aspects_to_lagna.get('saturn', 0) >= 75:
-                complexion_score = max(complexion_score, 65.0)
-            # Mercury: dark complexion
+                
+        elif complexion_trait == 'DULL_GREEN':
+            # Mercury: dull green (durva grass) complexion (BPHS 2.5)
             if 'mercury' in planets_in_lagna:
-                complexion_score = max(complexion_score, 50.0)
+                complexion_score = 85.0
+            elif aspects_to_lagna.get('mercury', 0) >= 75:
+                complexion_score = 65.0
+                
+        elif complexion_trait == 'DARK':
+            # Saturn: dark and black complexion (BPHS 2.16)
+            if 'saturn' in planets_in_lagna:
+                complexion_score = 80.0
+            elif aspects_to_lagna.get('saturn', 0) >= 75:
+                complexion_score = 60.0
+            # Sun can contribute to dark complexion when weak
+            if aspects_to_lagna.get('sun', 0) >= 50:
+                complexion_score = max(complexion_score, 40.0)
         
         scores['complexion'] = complexion_score
     else:
@@ -1657,7 +1705,9 @@ def palashodhana_search(candidate_record: dict[str, Any],
                         optional_traits: Optional[dict[str, str]] = None,
                         optional_events: Optional[dict[str, Any]] = None,
                         max_palas: int = PALA_LEVEL_SHODHANA_PALAS,
-                        strict_palā_precision: bool = True) -> dict[str, Any]:
+                        strict_palā_precision: bool = True,
+                        window_start_dt: Optional[datetime.datetime] = None,
+                        window_end_dt: Optional[datetime.datetime] = None) -> dict[str, Any]:
     """Perform enhanced palā-by-palā śodhana with binary search optimization.
     
     BPHS 4.6 suggests palā-level precision for लग्नांशप्राणांशपदैक्यता (degree equality).
@@ -1701,13 +1751,10 @@ def palashodhana_search(candidate_record: dict[str, Any],
         # Calculate adjusted time
         adjusted_time_local = base_time_local + datetime.timedelta(seconds=pala_offset * PALA_SECONDS)
         
-        # Skip if time goes outside day boundaries
-        if not (sunrise_local.time() <= adjusted_time_local.time() <= datetime.time(23, 59, 59)):
-            # Adjust for next day if needed
-            if pala_offset > 0:
-                adjusted_time_local = adjusted_time_local + datetime.timedelta(days=1)
-            else:
-                adjusted_time_local = adjusted_time_local - datetime.timedelta(days=1)
+        # IMPORTANT: Check if adjusted time stays within user's requested search window
+        if window_start_dt and window_end_dt:
+            if not (window_start_dt <= adjusted_time_local <= window_end_dt):
+                return False, 999.0, None
         
         # Re-evaluate this time with full precision
         jd_ut_val = _datetime_to_jd_ut(adjusted_time_local, tz_offset)
@@ -2013,12 +2060,12 @@ def search_candidate_times(dob: datetime.date,
 
         if traits_scores:
             candidate_record['physical_traits_scores'] = {
-                k: round(v, 2) for k, v in traits_scores.items()
+                k: round(v, 2) if isinstance(v, (int, float)) else v for k, v in traits_scores.items()
             }
 
         if events_scores:
             candidate_record['life_events_scores'] = {
-                k: round(v, 2) for k, v in events_scores.items()
+                k: round(v, 2) if isinstance(v, (int, float)) else v for k, v in events_scores.items()
             }
             candidate_record['heuristic_components'] = {
                 'traits_overall': round(traits_scores.get('overall', 0.0), 2) if traits_scores else 0.0,
@@ -2222,14 +2269,21 @@ def search_candidate_times(dob: datetime.date,
             best_candidate, dob, latitude, longitude, tz_offset,
             sunrise_local, gulika_info, optional_traits, optional_events,
             max_palas=min(120, FULL_DAY_PALAS),  # Conservative limit for performance
-            strict_palā_precision=True
+            strict_palā_precision=True,
+            window_start_dt=start_dt,
+            window_end_dt=end_dt
         )
         
         if enhanced_best.get('shodhana_success', False):
-            # Replace the first candidate with enhanced version
-            candidates[0] = enhanced_best
-            logger.info(f"Best candidate enhanced via palā-level śodhana: "
-                       f"{enhanced_best['time_local']} (delta: {enhanced_best.get('delta_pp_deg', 0):.3f}°)")
+            # Check for duplicates before replacing candidate
+            existing_times = {c['time_local'] for c in candidates}
+            if enhanced_best['time_local'] not in existing_times:
+                # Replace the first candidate with enhanced version
+                candidates[0] = enhanced_best
+                logger.info(f"Best candidate enhanced via palā-level śodhana: "
+                           f"{enhanced_best['time_local']} (delta: {enhanced_best.get('delta_pp_deg', 0):.3f}°)")
+            else:
+                logger.debug(f"Shodhana produced duplicate timestamp {enhanced_best['time_local']}, skipping")
         
         # Try to improve other top candidates if needed
         for i in range(1, min(3, len(candidates))):
@@ -2239,13 +2293,20 @@ def search_candidate_times(dob: datetime.date,
                     candidate, dob, latitude, longitude, tz_offset,
                     sunrise_local, gulika_info, optional_traits, optional_events,
                     max_palas=60,  # Smaller range for subsequent candidates
-                    strict_palā_precision=True
+                    strict_palā_precision=True,
+                    window_start_dt=start_dt,
+                    window_end_dt=end_dt
                 )
                 if enhanced_candidate.get('shodhana_success', False):
-                    candidates[i] = enhanced_candidate
-                    logger.debug(f"Candidate {i+1} enhanced via palā-level śodhana: "
-                                f"{enhanced_candidate['time_local']} "
-                                f"(delta: {enhanced_candidate.get('delta_pp_deg', 0):.3f}°)")
+                    # Check for duplicates before replacing
+                    existing_times = {c['time_local'] for c in candidates}
+                    if enhanced_candidate['time_local'] not in existing_times:
+                        candidates[i] = enhanced_candidate
+                        logger.debug(f"Candidate {i+1} enhanced via palā-level śodhana: "
+                                    f"{enhanced_candidate['time_local']} "
+                                    f"(delta: {enhanced_candidate.get('delta_pp_deg', 0):.3f}°)")
+                    else:
+                        logger.debug(f"Shodhana produced duplicate timestamp {enhanced_candidate['time_local']}, skipping")
     
     if collect_rejections:
         return candidates, rejections

@@ -21,7 +21,7 @@ export interface PhysicalTraits {
   build_band?: 'SLIM' | 'MEDIUM' | 'ATHLETIC' | 'HEAVY';
   body_frame?: string;
   complexion?: string; // Legacy band
-  complexion_tone?: 'FAIR' | 'WHEATISH' | 'DARK';
+  complexion_tone?: 'FAIR' | 'WHEATISH' | 'REDDISH' | 'DARK' | 'DULL_GREEN';
   notes?: string;
 }
 
