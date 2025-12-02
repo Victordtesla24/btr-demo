@@ -125,7 +125,8 @@ def apply_haranas(raw_years: Dict[str, float],
         deg = planets_deg[p]
         house = get_house_from_lagna(deg, lagna_deg)
         is_retro = is_retrograde(speeds.get(p, 0.0))
-        is_combust = _is_combust(p, deg, planets_deg[SUN])
+        sun_deg = planets_deg.get(SUN)
+        is_combust = _is_combust(p, deg, sun_deg) if sun_deg is not None else False
         
         # 1. Chakra Patha Harana (House Placement)
         fraction = 0.0
