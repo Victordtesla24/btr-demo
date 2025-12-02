@@ -102,12 +102,13 @@ def apply_haranas(raw_years: Dict[str, float],
     # Check for Krurodaya (Malefic in Lagna) first
     # This affects LAGNA's years if present in raw_years
     malefic_in_lagna = False
-    for p in PLANETS:
-        if p in malefics:
-            h = get_house_from_lagna(planets_deg[p], lagna_deg)
-            if h == 1:
-                malefic_in_lagna = True
-                break
+    for p in malefics:
+        if p not in planets_deg:
+            continue
+        h = get_house_from_lagna(planets_deg[p], lagna_deg)
+        if h == 1:
+            malefic_in_lagna = True
+            break
                 
     if LAGNA in final_years and malefic_in_lagna:
         final_years[LAGNA] = final_years[LAGNA] * 0.5
