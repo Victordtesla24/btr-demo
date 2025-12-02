@@ -116,7 +116,9 @@ def apply_haranas(raw_years: Dict[str, float],
         final_years[LAGNA] = final_years[LAGNA] * 0.5
 
     for p in PLANETS:
-        if p not in raw_years: continue # Skip if planet not contributing (e.g. rare cases)
+        # Skip if planet not contributing or missing position data
+        if p not in raw_years or p not in planets_deg:
+            continue
         
         reductions = [] 
         
