@@ -2,7 +2,8 @@ type ClientLogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const CLIENT_LOG_ENDPOINT = '/api/client-log';
 // Vite exposes env vars via import.meta.env and only passes through keys prefixed with VITE_
-const verboseEnabled = (import.meta.env?.VITE_VERBOSE_LOGGING ?? 'true') !== 'false';
+// Fail loudly if the env is missing to avoid silently masking misconfiguration.
+const verboseEnabled = (import.meta.env.VITE_VERBOSE_LOGGING ?? 'true') !== 'false';
 
 const consoleMap: Record<ClientLogLevel, (...args: unknown[]) => void> = {
   debug: console.debug,
