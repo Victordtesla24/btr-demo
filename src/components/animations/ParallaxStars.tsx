@@ -71,13 +71,14 @@ export default function ParallaxStars() {
     }
 
     // Parallax scroll effect - works across entire document
+    let scrollTriggerInstance: ScrollTrigger | undefined;
     if (!prefersReducedMotion) {
-      ScrollTrigger.create({
+      scrollTriggerInstance = ScrollTrigger.create({
         trigger: document.body,
         start: 'top top',
         end: 'bottom bottom',
         scrub: 1,
-        onUpdate: (self) => {
+        onUpdate: () => {
           const scrollY = window.scrollY || window.pageYOffset;
           stars.forEach((star, index) => {
             const speed = 0.3 + (index % 3) * 0.1; // Varying speeds: 0.3x, 0.4x, 0.5x
@@ -97,11 +98,9 @@ export default function ParallaxStars() {
         }
       });
       starsRef.current = [];
-      ScrollTrigger.getAll().forEach((trigger) => {
-        if (trigger.vars.trigger === container) {
-          trigger.kill();
-        }
-      });
+      if (scrollTriggerInstance) {
+        scrollTriggerInstance.kill();
+      }
     };
   }, []);
 

@@ -519,7 +519,7 @@ const EarthMoonSunAnimation: React.FC<EarthMoonSunAnimationProps> = ({
   /**
    * Main animation loop
    */
-  const animate = useCallback((timestamp: number) => {
+  const animate = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -571,7 +571,7 @@ const EarthMoonSunAnimation: React.FC<EarthMoonSunAnimationProps> = ({
     const earthYRaw = Math.sin(earthAngleRef.current) * earthOrbitRadius;
     
     // Apply Y-axis rotation (horizontal rotation)
-    let earthX3D = earthXRaw * cosY;
+    const earthX3D = earthXRaw * cosY;
     let earthY3D = earthYRaw;
     let earthZ3D = earthXRaw * sinY;
     
@@ -589,7 +589,7 @@ const EarthMoonSunAnimation: React.FC<EarthMoonSunAnimationProps> = ({
     const moonYRaw = Math.sin(moonAngleRef.current) * moonOrbitRadius;
     
     // Apply Y-axis rotation
-    let moonX3D = moonXRaw * cosY;
+    const moonX3D = moonXRaw * cosY;
     let moonY3D = moonYRaw;
     let moonZ3D = moonXRaw * sinY;
     
@@ -614,7 +614,7 @@ const EarthMoonSunAnimation: React.FC<EarthMoonSunAnimationProps> = ({
       const yRaw = Math.sin(angle) * earthOrbitRadius;
       
       // Apply 3D transformations
-      let x3D = xRaw * cosY;
+      const x3D = xRaw * cosY;
       let y3D = yRaw;
       let z3D = xRaw * sinY;
       
@@ -644,7 +644,7 @@ const EarthMoonSunAnimation: React.FC<EarthMoonSunAnimationProps> = ({
       const yRaw = Math.sin(angle) * moonOrbitRadius;
       
       // Apply 3D transformations
-      let x3D = xRaw * cosY;
+      const x3D = xRaw * cosY;
       let y3D = yRaw;
       let z3D = xRaw * sinY;
       

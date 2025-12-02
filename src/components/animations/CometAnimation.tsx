@@ -1,373 +1,346 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef } from 'react';
+import * as THREE from 'three';
 
 /**
  * CometAnimation
- * 
- * Cinematic 3D comet with dynamic particle tails
- * Features:
- * - Stationary comet moving in linear horizontal path
- * - Detailed icy nucleus with craggy texture
- * - Dual tail system (ion + dust) with 800+ particles
- * - Dynamic particle physics and dispersion
- * - Bright coma glow effect
- * - Particles spawn, flow, and fade continuously
- * - Monochromatic black/white space theme
+ *
+ * Consolidated 3D comet animation used across the site (About + Contact).
+ *
+ * Visual goals based on the provided reference render:
+ * - Rocky, faceted nucleus with intense monochrome glow
+ * - Very long, high-density curved tail following an elliptical orbit
+ * - Strict black & white / grayscale palette
+ * - Subtle camera/parallax motion for depth, but not distracting from content
  */
 
-interface CometAnimationProps {
+export interface CometAnimationProps {
   className?: string;
-  style?: React.CSSProperties;
 }
 
-interface Star {
-  x: number;
-  y: number;
-  size: number;
-  opacity: number;
-}
+const CometAnimation: React.FC<CometAnimationProps> = ({ className = '' }) => {
+  const mountRef = useRef<HTMLDivElement | null>(null);
 
-interface Particle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  opacity: number;
-  life: number;
-  maxLife: number;
-  type: 'ion' | 'dust';
-  trailLength: number;
-}
-
-// Configuration constants
-const COMET_SPEED = 0.15;
-const NUCLEUS_SIZE = 12;
-const COMA_SIZE = 45;
-const ION_PARTICLE_COUNT = 500;
-const DUST_PARTICLE_COUNT = 300;
-const PARTICLE_SPAWN_RATE = 3;
-const STAR_COUNT = 50;
-const COMET_Y_RATIO = 0.5; // Vertical center
-
-const CometAnimation: React.FC<CometAnimationProps> = ({
-  className = '',
-  style = {},
-}) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationFrameId = useRef<number | null>(null);
-  const starsRef = useRef<Star[]>([]);
-  const particlesRef = useRef<Particle[]>([]);
-  const cometXRef = useRef<number>(0);
-  const lastTimestampRef = useRef<number>(0);
-
-  /**
-   * Initialize star field
-   */
-  const initStars = useCallback((canvas: HTMLCanvasElement) => {
-    const stars: Star[] = [];
-    for (let i = 0; i < STAR_COUNT; i++) {
-      stars.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        size: Math.random() * 1.5 + 0.5,
-        opacity: Math.random() * 0.5 + 0.3,
-      });
-    }
-    starsRef.current = stars;
-  }, []);
-
-  /**
-   * Spawn tail particles
-   */
-  const spawnParticles = useCallback((
-    cometX: number,
-    cometY: number,
-    count: number,
-    type: 'ion' | 'dust'
-  ) => {
-    for (let i = 0; i < count; i++) {
-      const angle = type === 'ion' 
-        ? Math.PI + (Math.random() - 0.5) * 0.3  // Straight back
-        : Math.PI + (Math.random() - 0.5) * 0.6; // Wider spread
-
-      const speed = type === 'ion' 
-        ? 2 + Math.random() * 3 
-        : 1 + Math.random() * 2;
-
-      particlesRef.current.push({
-        x: cometX,
-        y: cometY,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        size: type === 'ion' ? 1.5 + Math.random() : 2 + Math.random() * 1.5,
-        opacity: 1,
-        life: 1,
-        maxLife: type === 'ion' ? 80 + Math.random() * 40 : 60 + Math.random() * 30,
-        type,
-        trailLength: type === 'ion' ? 15 : 10,
-      });
-    }
-  }, []);
-
-  /**
-   * Draw star field
-   */
-  const drawStars = useCallback((ctx: CanvasRenderingContext2D) => {
-    starsRef.current.forEach((star) => {
-      ctx.beginPath();
-      ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
-      ctx.fill();
-    });
-  }, []);
-
-  /**
-   * Draw comet nucleus with craggy texture
-   */
-  const drawNucleus = useCallback((
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    size: number
-  ) => {
-    // Base nucleus
-    const gradient = ctx.createRadialGradient(
-      x - size * 0.3,
-      y - size * 0.3,
-      0,
-      x,
-      y,
-      size
-    );
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    gradient.addColorStop(0.5, 'rgba(220, 220, 220, 0.9)');
-    gradient.addColorStop(1, 'rgba(150, 150, 150, 0.7)');
-
-    ctx.beginPath();
-    ctx.arc(x, y, size, 0, Math.PI * 2);
-    ctx.fillStyle = gradient;
-    ctx.fill();
-
-    // Craggy texture with random surface features
-    ctx.save();
-    ctx.globalAlpha = 0.3;
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const craterX = x + Math.cos(angle) * size * 0.6;
-      const craterY = y + Math.sin(angle) * size * 0.6;
-      const craterSize = size * (0.15 + Math.random() * 0.1);
-
-      ctx.beginPath();
-      ctx.arc(craterX, craterY, craterSize, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(100, 100, 100, 0.6)';
-      ctx.fill();
-    }
-    ctx.restore();
-
-    // Bright center
-    ctx.beginPath();
-    ctx.arc(x - size * 0.2, y - size * 0.2, size * 0.4, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.fill();
-
-    // Outline
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(x, y, size, 0, Math.PI * 2);
-    ctx.stroke();
-  }, []);
-
-  /**
-   * Draw coma glow
-   */
-  const drawComa = useCallback((
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    size: number
-  ) => {
-    const gradient = ctx.createRadialGradient(x, y, 0, x, y, size);
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
-    gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.3)');
-    gradient.addColorStop(0.6, 'rgba(200, 220, 255, 0.15)');
-    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
-    ctx.beginPath();
-    ctx.arc(x, y, size, 0, Math.PI * 2);
-    ctx.fillStyle = gradient;
-    ctx.fill();
-  }, []);
-
-  /**
-   * Draw tail particles
-   */
-  const drawParticles = useCallback((ctx: CanvasRenderingContext2D) => {
-    particlesRef.current.forEach((particle) => {
-      // Draw particle trail
-      ctx.save();
-      ctx.globalAlpha = particle.opacity * 0.3;
-      ctx.strokeStyle = particle.type === 'ion' 
-        ? 'rgba(200, 220, 255, 1)' 
-        : 'rgba(255, 255, 255, 1)';
-      ctx.lineWidth = particle.size * 0.5;
-      ctx.beginPath();
-      ctx.moveTo(particle.x, particle.y);
-      ctx.lineTo(
-        particle.x + particle.vx * particle.trailLength,
-        particle.y + particle.vy * particle.trailLength
-      );
-      ctx.stroke();
-      ctx.restore();
-
-      // Draw particle core
-      const gradient = ctx.createRadialGradient(
-        particle.x, particle.y, 0,
-        particle.x, particle.y, particle.size * 2
-      );
-      gradient.addColorStop(0, `rgba(255, 255, 255, ${particle.opacity})`);
-      gradient.addColorStop(0.5, `rgba(220, 230, 255, ${particle.opacity * 0.6})`);
-      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
-      ctx.beginPath();
-      ctx.arc(particle.x, particle.y, particle.size * 2, 0, Math.PI * 2);
-      ctx.fillStyle = gradient;
-      ctx.fill();
-    });
-  }, []);
-
-  /**
-   * Main render loop
-   */
-  const render = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const now = performance.now();
-    const dt = lastTimestampRef.current ? now - lastTimestampRef.current : 0;
-    lastTimestampRef.current = now;
-
-    // Clear canvas
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw stars
-    drawStars(ctx);
-
-    // Update comet position (linear horizontal motion)
-    cometXRef.current += COMET_SPEED * (dt / 16);
-
-    // Loop comet position
-    if (cometXRef.current > canvas.width + COMA_SIZE) {
-      cometXRef.current = -COMA_SIZE;
-    }
-
-    const cometY = canvas.height * COMET_Y_RATIO;
-
-    // Spawn new particles
-    if (Math.random() < PARTICLE_SPAWN_RATE / 60) {
-      spawnParticles(cometXRef.current, cometY, 2, 'ion');
-      spawnParticles(cometXRef.current, cometY, 1, 'dust');
-    }
-
-    // Update particles
-    particlesRef.current = particlesRef.current.filter((particle) => {
-      particle.x += particle.vx;
-      particle.y += particle.vy;
-      particle.life -= 1 / particle.maxLife;
-      particle.opacity = particle.life;
-
-      // Add gravity effect for dust particles
-      if (particle.type === 'dust') {
-        particle.vy += 0.02;
-      }
-
-      return particle.life > 0 && particle.x > -100;
-    });
-
-    // Draw coma glow
-    drawComa(ctx, cometXRef.current, cometY, COMA_SIZE);
-
-    // Draw tail particles
-    drawParticles(ctx);
-
-    // Draw nucleus
-    drawNucleus(ctx, cometXRef.current, cometY, NUCLEUS_SIZE);
-
-    animationFrameId.current = requestAnimationFrame(render);
-  }, [drawStars, drawComa, drawParticles, drawNucleus, spawnParticles]);
-
-  // Initialize on mount
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = mountRef.current;
+    if (!container) return;
+
+    // In non-browser / test environments (e.g. Jest + JSDOM) there is no
+    // WebGL context available. We short-circuit in that case so tests can
+    // render sections without Three.js throwing.
+    if (
+      typeof window === 'undefined' ||
+      (typeof process !== 'undefined' && 
+       process.env && 
+       'JEST_WORKER_ID' in process.env)
+    ) {
+      return;
+    }
+
+    const testCanvas = document.createElement('canvas');
+    const hasWebGL = !!(
+      testCanvas.getContext('webgl2') || testCanvas.getContext('webgl')
+    );
+    if (!hasWebGL) {
+      return;
+    }
+
+    const prefersReducedMotion =
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const PARTICLE_COUNT = prefersReducedMotion ? 20000 : 70000;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+
+    const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 600);
+    // Pull the camera slightly back and above so the full elliptical arc
+    // of the tail is visible, echoing the reference render composition.
+    camera.position.set(0, 12, 110);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ReinhardToneMapping;
+    renderer.toneMappingExposure = 1.0;
+
+    container.appendChild(renderer.domElement);
 
     const resize = () => {
-      const parent = canvas.parentElement;
-      if (!parent) return;
-
-      const rect = parent.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
-
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.scale(dpr, dpr);
-      }
-
-      initStars(canvas);
-      cometXRef.current = canvas.width * 0.1; // Start from left
+      const { clientWidth, clientHeight } = container;
+      if (!clientWidth || !clientHeight) return;
+      camera.aspect = clientWidth / clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(clientWidth, clientHeight, false);
     };
 
     resize();
     window.addEventListener('resize', resize);
 
+    // Lighting – strong key light plus subtle ambient for nucleus detail.
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambient);
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    keyLight.position.set(30, 40, 60);
+    scene.add(keyLight);
+
+    // Comet group (nucleus + halo + tail)
+    const cometGroup = new THREE.Group();
+    scene.add(cometGroup);
+
+    // Faint orbit guide ellipse matching the comet path. This helps visually
+    // suggest the long, curved trajectory from the reference image.
+    const orbitPoints: THREE.Vector3[] = [];
+    const ORBIT_SEGMENTS = 180;
+    const ORBIT_RADIUS_X = 55;
+    const ORBIT_RADIUS_Z = 25;
+    for (let i = 0; i <= ORBIT_SEGMENTS; i++) {
+      const t = (i / ORBIT_SEGMENTS) * Math.PI * 2;
+      const ox = Math.cos(t) * ORBIT_RADIUS_X;
+      const oz = Math.sin(t) * ORBIT_RADIUS_Z;
+      orbitPoints.push(new THREE.Vector3(ox, 0, oz));
+    }
+    const orbitGeometry = new THREE.BufferGeometry().setFromPoints(orbitPoints);
+    const orbitMaterial = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.15,
+    });
+    const orbitLine = new THREE.LineLoop(orbitGeometry, orbitMaterial);
+    orbitLine.rotation.x = THREE.MathUtils.degToRad(18);
+    orbitLine.rotation.z = THREE.MathUtils.degToRad(-12);
+    scene.add(orbitLine);
+
+    // Faceted, rocky nucleus using an icosahedron for a craggy silhouette.
+    const nucleusGeometry = new THREE.IcosahedronGeometry(3, 2);
+    const nucleusMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(0xffffff),
+      emissive: new THREE.Color(0xffffff),
+      emissiveIntensity: 1.6,
+      roughness: 0.45,
+      metalness: 0.05,
+    });
+    const nucleus = new THREE.Mesh(nucleusGeometry, nucleusMaterial);
+    nucleus.castShadow = false;
+    nucleus.receiveShadow = false;
+    cometGroup.add(nucleus);
+
+    // Intense halo around the nucleus to mimic strong bloom.
+    const haloGeometry = new THREE.SphereGeometry(6, 48, 48);
+    const haloMaterial = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(0xffffff),
+      transparent: true,
+      opacity: 0.27,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const halo = new THREE.Mesh(haloGeometry, haloMaterial);
+    cometGroup.add(halo);
+
+    // Tail particles – very dense, forming a curved, elliptical streak.
+    const positions = new Float32Array(PARTICLE_COUNT * 3);
+    const velocities = new Float32Array(PARTICLE_COUNT * 3);
+    const life = new Float32Array(PARTICLE_COUNT);
+    const maxLife = new Float32Array(PARTICLE_COUNT);
+
+    const spawnRadius = 1.4;
+
+    const tailDirection = new THREE.Vector3(-1, 0, 0); // updated each frame
+    const tmpMain = new THREE.Vector3();
+    const tmpSpread = new THREE.Vector3();
+
+    const resetParticle = (i: number) => {
+      const i3 = i * 3;
+
+      // Spawn in a tight sphere around the nucleus (local space)
+      const r = spawnRadius * Math.cbrt(Math.random());
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const sx = r * Math.sin(phi) * Math.cos(theta);
+      const sy = r * Math.sin(phi) * Math.sin(theta);
+      const sz = r * Math.cos(phi);
+
+      positions[i3] = sx;
+      positions[i3 + 1] = sy;
+      positions[i3 + 2] = sz;
+
+      const baseSpeed = prefersReducedMotion ? 0.5 : 0.85;
+      const spread = prefersReducedMotion ? 0.2 : 0.35;
+
+      tmpMain
+        .copy(tailDirection)
+        .normalize()
+        .multiplyScalar(-baseSpeed * (1.2 + Math.random()));
+
+      tmpSpread.set(
+        (Math.random() - 0.5) * spread,
+        (Math.random() - 0.5) * spread * 0.4,
+        (Math.random() - 0.5) * spread
+      );
+
+      tmpMain.add(tmpSpread);
+
+      velocities[i3] = tmpMain.x;
+      velocities[i3 + 1] = tmpMain.y;
+      velocities[i3 + 2] = tmpMain.z;
+
+      const maxL = prefersReducedMotion
+        ? 4.0 + Math.random() * 2.0
+        : 7.0 + Math.random() * 3.0; // seconds – longer life for a longer tail
+      life[i] = maxL;
+      maxLife[i] = maxL;
+    };
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      resetParticle(i);
+    }
+
+    const tailGeometry = new THREE.BufferGeometry();
+    tailGeometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(positions, 3)
+    );
+
+    const tailMaterial = new THREE.PointsMaterial({
+      color: new THREE.Color(0xffffff),
+      size: prefersReducedMotion ? 0.045 : 0.06,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true,
+    });
+
+    const tailPoints = new THREE.Points(tailGeometry, tailMaterial);
+    tailPoints.frustumCulled = false;
+    cometGroup.add(tailPoints);
+
+    // Slight atmospheric haze for depth.
+    scene.fog = new THREE.FogExp2(0x000000, prefersReducedMotion ? 0.006 : 0.012);
+
+    const parallaxTarget = new THREE.Vector2(0, 0);
+    const parallaxCurrent = new THREE.Vector2(0, 0);
+    const parallaxStrength = prefersReducedMotion ? 0.2 : 0.45;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const x = event.clientX / window.innerWidth - 0.5;
+      const y = event.clientY / window.innerHeight - 0.5;
+      parallaxTarget.set(x * parallaxStrength, -y * parallaxStrength);
+    };
+
+    if (!prefersReducedMotion) {
+      window.addEventListener('mousemove', handleMouseMove);
+    }
+
+    const clock = new THREE.Clock();
+
+    // Track previous position to derive forward direction along the orbit.
+    const lastPos = new THREE.Vector3();
+    const currentPos = new THREE.Vector3();
+    let hasLastPos = false;
+
+    let animationFrameId: number;
+
+    const animate = () => {
+      const delta = clock.getDelta();
+      const elapsed = clock.getElapsedTime();
+
+      // Elliptical orbit parameters (XZ-plane with mild vertical undulation).
+      const radiusX = 55;
+      const radiusZ = 25;
+      const radiusY = 12;
+      const orbitSpeed = prefersReducedMotion ? 0.045 : 0.07;
+
+      const angle = elapsed * orbitSpeed;
+      const x = Math.cos(angle) * radiusX;
+      const z = Math.sin(angle) * radiusZ;
+      const y = Math.sin(angle * 0.7) * radiusY * 0.18;
+
+      cometGroup.position.set(x, y, z);
+
+      currentPos.copy(cometGroup.position);
+      if (hasLastPos) {
+        tailDirection.copy(currentPos).sub(lastPos).normalize();
+      } else {
+        hasLastPos = true;
+      }
+      lastPos.copy(currentPos);
+
+      cometGroup.lookAt(currentPos.clone().add(tailDirection));
+      cometGroup.rotation.y += 0.12; // subtle nucleus spin
+
+      // Camera parallax
+      parallaxCurrent.lerp(parallaxTarget, 0.08);
+      camera.position.x = parallaxCurrent.x * 18;
+      camera.position.y = 12 + parallaxCurrent.y * 10;
+      camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+      const speedScale = prefersReducedMotion ? 1.0 : 1.25;
+      const decayScale = prefersReducedMotion ? 0.8 : 1.0;
+
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const i3 = i * 3;
+
+        positions[i3] += velocities[i3] * delta * speedScale;
+        positions[i3 + 1] += velocities[i3 + 1] * delta * speedScale;
+        positions[i3 + 2] += velocities[i3 + 2] * delta * speedScale;
+
+        life[i] -= delta * decayScale;
+
+        const dx = positions[i3];
+        const dy = positions[i3 + 1];
+        const dz = positions[i3 + 2];
+        const distSq = dx * dx + dy * dy + dz * dz;
+
+        if (life[i] <= 0 || distSq > 65000) {
+          resetParticle(i);
+        }
+      }
+
+      (tailGeometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+
+      renderer.render(scene, camera);
+      animationFrameId = window.requestAnimationFrame(animate);
+    };
+
+    animationFrameId = window.requestAnimationFrame(animate);
+
     return () => {
       window.removeEventListener('resize', resize);
-    };
-  }, [initStars]);
+      if (!prefersReducedMotion) {
+        window.removeEventListener('mousemove', handleMouseMove);
+      }
+      window.cancelAnimationFrame(animationFrameId);
 
-  // Start animation
-  useEffect(() => {
-    render();
-    return () => {
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current);
+      tailGeometry.dispose();
+      tailMaterial.dispose();
+      nucleusGeometry.dispose();
+      nucleusMaterial.dispose();
+      haloGeometry.dispose();
+      haloMaterial.dispose();
+
+      renderer.dispose();
+      if (container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
       }
     };
-  }, [render]);
+  }, []);
 
   return (
     <div
-      className={`comet-container ${className}`}
+      ref={mountRef}
+      className={className}
       style={{
         width: '100%',
         height: '100%',
         position: 'relative',
-        backgroundColor: '#000000',
-        overflow: 'hidden',
-        ...style,
+        pointerEvents: 'none',
       }}
-    >
-      <canvas
-        ref={canvasRef}
-        style={{
-          display: 'block',
-          width: '100%',
-          height: '100%',
-        }}
-        aria-label="Comet with dynamic particle tails moving in linear path"
-      />
-    </div>
+      aria-hidden="true"
+    />
   );
 };
 

@@ -19,16 +19,13 @@ export default function Footer() {
     <footer className="bg-black border-t border-gray-500 py-8">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center text-sm font-mono text-gray-300">
-          <p>© {currentYear} Chris Cole. All rights reserved.</p>
+          <p>© {currentYear} Jyotish Shastra. All rights reserved.</p>
           <p className="mt-2">Built with Next.js, GSAP, Framer Motion</p>
           <p className="mt-4 text-xs text-gray-400">
-            Design inspired by Chris Cole&apos;s original portfolio (hellochriscole.webflow.io).
-            <br />
-            This is a technical recreation built for educational purposes.
+            Space-inspired interface for Vedic astrology, birth charts, and birth time rectification.
           </p>
         </div>
       </div>
     </footer>
   );
 }
-

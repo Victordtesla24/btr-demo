@@ -92,6 +92,15 @@ const LETTER_COORDS = {
     { x: 0.10, y: 0.60 }, // bottom right
     { x: 0.12, y: 0.38 }  // top right
   ],
+  // Add H for HOME
+  H: [
+    { x: 0.60, y: 0.38 }, // top left
+    { x: 0.60, y: 0.60 }, // bottom left
+    { x: 0.68, y: 0.38 }, // top right
+    { x: 0.68, y: 0.60 }, // bottom right
+    { x: 0.60, y: 0.50 }, // mid left
+    { x: 0.68, y: 0.50 }  // mid right
+  ],
   // Add S for SKETCHES
   S: [
     { x: 0.68, y: 0.40 }, // top right
@@ -148,6 +157,11 @@ const LETTER_SEGMENTS = {
     [2, 3],  // Middle peak to bottom right
     [3, 4]   // Bottom right to top right
   ],
+  H: [
+    [0, 1],  // Left vertical
+    [2, 3],  // Right vertical
+    [4, 5]   // Crossbar
+  ],
   S: [
     [0, 1],  // Top right to top left
     [1, 2],  // Top left to top curve
@@ -160,9 +174,7 @@ const LETTER_SEGMENTS = {
 
 const StarLetterAnimation: React.FC<StarLetterAnimationProps> = ({ 
   letter, 
-  position = 'left', 
   isHovered = false,
-  path,
   label,
   isActive = false,
   onClick

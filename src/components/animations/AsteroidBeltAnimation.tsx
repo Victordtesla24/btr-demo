@@ -216,9 +216,9 @@ const AsteroidBeltAnimation: React.FC<AsteroidBeltAnimationProps> = ({
     zTilt: number
   ): { x: number; y: number; z: number } => {
     // Y-axis rotation
-    let newX = x * Math.cos(yTilt) + z * Math.sin(yTilt);
-    let newZ = -x * Math.sin(yTilt) + z * Math.cos(yTilt);
-    let newY = y;
+    const newX = x * Math.cos(yTilt) + z * Math.sin(yTilt);
+    const newZ = -x * Math.sin(yTilt) + z * Math.cos(yTilt);
+    const newY = y;
 
     // Z-axis rotation
     const finalX = newX * Math.cos(zTilt) - newY * Math.sin(zTilt);
@@ -284,12 +284,11 @@ const AsteroidBeltAnimation: React.FC<AsteroidBeltAnimationProps> = ({
         const cosY = Math.cos(asteroid.rotationY);
         const sinY = Math.sin(asteroid.rotationY);
 
-        let vx = vertex.x;
-        let vy = vertex.y * cosX - vertex.z * sinX;
-        let vz = vertex.y * sinX + vertex.z * cosX;
+        const vx = vertex.x;
+        const vy = vertex.y * cosX - vertex.z * sinX;
+        const vz = vertex.y * sinX + vertex.z * cosX;
 
         const finalVx = vx * cosY + vz * sinY;
-        const finalVz = -vx * sinY + vz * cosY;
 
         if (idx === 0) {
           ctx.moveTo(finalVx, vy);

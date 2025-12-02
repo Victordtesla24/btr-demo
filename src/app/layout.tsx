@@ -5,23 +5,30 @@ import SmoothScroll from '@/components/layout/SmoothScroll';
 import CursorTrail from '@/components/animations/CursorTrail';
 import LoadingOverlay from '@/components/animations/LoadingOverlay';
 import ParallaxStars from '@/components/animations/ParallaxStars';
-import DriftingSpaceships from '@/components/animations/DriftingSpaceships';
 import Constellation from '@/components/animations/Constellation';
 
 export const metadata: Metadata = {
-  title: 'Chris Cole - Creative Director & Designer',
-  description: 'Portfolio of Chris Cole: Web design, branding, product, packaging. Over a decade in tech.',
-  keywords: ['web design', 'branding', 'creative director', 'portfolio'],
-  authors: [{ name: 'Chris Cole' }],
+  title: 'Jyotish Shastra – Vedic Astrology & Birth Time Rectification',
+  description:
+    'Jyotish Shastra: Vedic astrology, birth chart analysis, and birth time rectification with immersive space-inspired visualizations.',
+  keywords: [
+    'jyotish',
+    'vedic astrology',
+    'birth chart',
+    'birth time rectification',
+    'black hole visualization',
+  ],
+  authors: [{ name: 'Jyotish Shastra' }],
   openGraph: {
-    title: 'Chris Cole Portfolio',
-    description: 'Creative Director specializing in web, branding, product',
+    title: 'Jyotish Shastra – Vedic Astrology',
+    description:
+      'Explore birth charts, birth time rectification, and comprehensive Jyotish analysis in a cinematic space environment.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Chris Cole Portfolio',
-    description: 'Creative Director & Designer',
+    title: 'Jyotish Shastra – Vedic Astrology',
+    description: 'Birth chart analysis, BTR, and comprehensive Jyotish insights.',
   },
   metadataBase: new URL(process.env.SITE_URL || 'https://localhost:3001'),
 };

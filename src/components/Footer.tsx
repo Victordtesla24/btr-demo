@@ -74,7 +74,7 @@ const Footer: React.FC = () => {
         {/* Copyright */}
         <div className="border-t border-accent/10 pt-8 text-center text-accent-muted">
           <p>
-            © {currentYear} Chris Cole Clone. Built with Next.js, TypeScript, and
+            © {currentYear} Jyotish Shastra. Built with Next.js, TypeScript, and
             Tailwind CSS.
           </p>
         </div>
@@ -84,4 +84,3 @@ const Footer: React.FC = () => {
 };
 
 export default Footer;
-

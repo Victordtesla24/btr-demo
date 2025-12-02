@@ -1,8 +1,7 @@
 'use client';
 
-import React from 'react';
-import ParallaxStars from '@/components/animations/ParallaxStars';
-import AsteroidBeltAnimation from '@/components/animations/AsteroidBeltAnimation';
+import React, { useEffect, useRef, useState } from 'react';
+import NebulaAnimation from '@/components/animations/NebulaAnimation';
 
 /**
  * Comprehensive Analysis Section Component
@@ -38,25 +37,71 @@ interface ComprehensiveAnalysisSectionProps {
 const ComprehensiveAnalysisSection: React.FC<ComprehensiveAnalysisSectionProps> = ({ 
   className = '' 
 }) => {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const [nebulaActive, setNebulaActive] = useState(false);
+
+  // Only run the heavy WebGL nebula when this section is in view on
+  // larger screens and motion is not reduced.
+  useEffect(() => {
+    const sectionEl = sectionRef.current;
+    if (!sectionEl) return;
+
+    if (typeof window === 'undefined') return;
+
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const prefersReducedMotion = motionQuery.matches;
+    const isSmallViewport = window.innerWidth < 768;
+
+    if (prefersReducedMotion || isSmallViewport) {
+      setNebulaActive(false);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.target === sectionEl) {
+            const visibleEnough = entry.isIntersecting && entry.intersectionRatio > 0.3;
+            setNebulaActive(visibleEnough);
+          }
+        });
+      },
+      {
+        threshold: [0, 0.3, 0.6],
+      }
+    );
+
+    observer.observe(sectionEl);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
   return (
     <section
+      ref={sectionRef}
       id="comprehensive-analysis"
       className={`relative min-h-screen flex items-center justify-center bg-black ${className}`}
     >
-      {/* Starry Background with Parallax */}
-      <div className="absolute inset-0 overflow-hidden">
-        <ParallaxStars />
+      {/* Nebula volumetric background (extended beyond section bounds for seamless blending) */}
+      <div
+        className="pointer-events-none absolute inset-x-0 overflow-hidden"
+        style={{ top: '-20vh', bottom: '-20vh' }}
+        aria-hidden="true"
+      >
+        <NebulaAnimation isActive={nebulaActive} />
+        {/* Soft top fade so the nebula blends into the surrounding black background */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black via-black/80 to-transparent" />
+        {/* Soft bottom fade so the nebula disappears smoothly into the next section */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black via-black/85 to-transparent" />
       </div>
 
       {/* Content Container with Two-Column Layout */}
       <div className="relative z-10 container mx-auto px-6">
         <div className="flex flex-col lg:flex-row gap-12 items-center justify-between">
-          {/* Left Side: Asteroid Belt Animation */}
-          <div className="flex-1 flex items-center justify-center w-full lg:w-auto min-h-[500px]">
-            <div className="w-full h-full max-w-2xl">
-              <AsteroidBeltAnimation />
-            </div>
-          </div>
+          {/* Left Side: layout spacer; nebula is rendered as full-section background */}
+          <div className="hidden lg:block flex-1 min-h-[500px]" aria-hidden="true" />
 
           {/* Right Side: Content */}
           <div className="flex-1 flex items-center justify-center w-full lg:w-auto">
@@ -65,7 +110,7 @@ const ComprehensiveAnalysisSection: React.FC<ComprehensiveAnalysisSectionProps> 
                 COMPREHENSIVE ANALYSIS
               </h2>
               <p className="text-xl md:text-2xl text-gray-400 font-light leading-relaxed">
-                (UNDER CONSTRUCTION)
+                Deep-dive Jyotish interpretations, timelines, and remedial guidance delivered with cinematic clarity.
               </p>
             </div>
           </div>

@@ -93,6 +93,10 @@ next-env.d.ts
 .cache
 .parcel-cache
 
+# External git repos (keep local only)
+Nebula/
+black_hole_shader/
+
 # Nuxt.js build / generate output
 .nuxt
 

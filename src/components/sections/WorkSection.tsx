@@ -11,14 +11,14 @@ import React, { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useScrollTrigger } from '@/animations/scrollTrigger';
 import EarthMoonSunAnimation from '@/components/animations/EarthMoonSunAnimation';
-import BirthChartForm from '@/components/ui/BirthChartForm';
+import BirthChartForm, { BirthChartData } from '@/components/ui/BirthChartForm';
 import ParallaxStars from '@/components/animations/ParallaxStars';
 
 const WorkSection: React.FC = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const { controls } = useScrollTrigger(sectionRef);
 
-  const handleGenerate = (data: any) => {
+  const handleGenerate = (data: BirthChartData) => {
     console.log('Birth Chart Data:', data);
     // TODO: Implement birth chart generation logic
   };
@@ -28,7 +28,7 @@ const WorkSection: React.FC = () => {
   };
 
   return (
-    <section ref={sectionRef} id="work" className="section-container py-20 md:py-32 relative min-h-screen flex items-center bg-black">
+    <section ref={sectionRef} id="birth-chart" className="section-container py-20 md:py-32 relative min-h-screen flex items-center bg-black">
       {/* Starry Background with Parallax */}
       <div className="absolute inset-0 overflow-hidden">
         <ParallaxStars />
@@ -50,8 +50,10 @@ const WorkSection: React.FC = () => {
           }}
           className="mb-12 text-center"
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">WORK</h2>
-          <p className="text-base md:text-lg text-gray-400 font-mono">(UNDER CONSTRUCTION)</p>
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">BIRTH CHART</h2>
+          <p className="text-base md:text-lg text-gray-300 font-mono">
+            Generate a precise chart with your birth details.
+          </p>
         </motion.div>
 
         {/* Two Column Layout - Animation Left, Form Right */}

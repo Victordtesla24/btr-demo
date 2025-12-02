@@ -1,139 +1,103 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 
 /**
  * CursorTrail Component
  * 
- * Custom cursor that follows mouse with lag
- * 
- * Requirements:
- * - Custom cursor visible (white circle, 24px diameter)
- * - Follows mouse with 200ms lag (smooth trailing effect)
- * - Default state: 24px circle, 80% opacity
- * - Mix-blend-mode: difference (inverts on backgrounds)
- * - Hover state: Scales to 36px (1.5x) on links/buttons
- * - Click state: Shrinks to 18px (0.75x) on mousedown
- * - Returns to hover or default on mouseup
- * - Hidden on mobile/tablet (desktop only)
- * - Smooth GSAP tweening (no jank)
- * - No pointer-events (doesn't block clicks)
- * - Will-change optimization active
- * - Cleanup on unmount
+ * Custom cursor that follows mouse with a smooth trailing effect.
+ * This implementation keeps all the visual behavior (lag, hover/click
+ * scaling) but avoids a continuous RAF + polling loop in favor of
+ * event-driven GSAP tweens.
  */
 export default function CursorTrail() {
   const cursorRef = useRef<HTMLDivElement>(null);
-  const [isHovering, setIsHovering] = useState(false);
-  const [isClicking, setIsClicking] = useState(false);
-  const mousePosition = useRef({ x: 0, y: 0 });
-  const cursorPosition = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
-    // Hide on mobile/tablet
-    const isMobile = window.innerWidth < 1024;
-    if (isMobile || !cursorRef.current) return;
-
     const cursor = cursorRef.current;
-    let rafId: number;
+    if (!cursor) return;
 
-    // Mouse move handler
-    const handleMouseMove = (e: MouseEvent) => {
-      mousePosition.current = { x: e.clientX, y: e.clientY };
-    };
+    // Respect mobile / coarse pointer devices and reduced motion.
+    if (typeof window === 'undefined') return;
 
-    // Update cursor position with lag
-    const updateCursor = () => {
-      if (!cursor) return;
+    const isSmallViewport = window.innerWidth < 1024;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
 
-      const dx = mousePosition.current.x - cursorPosition.current.x;
-      const dy = mousePosition.current.y - cursorPosition.current.y;
+    if (isSmallViewport || prefersReducedMotion || isCoarsePointer) {
+      // Let CSS hide the custom cursor on these devices.
+      return;
+    }
 
-      cursorPosition.current.x += dx * 0.15; // 200ms lag approximation
-      cursorPosition.current.y += dy * 0.15;
+    // Center the cursor element on its transform origin.
+    gsap.set(cursor, { xPercent: -50, yPercent: -50 });
 
+    const moveHandler = (e: MouseEvent) => {
       gsap.to(cursor, {
-        x: cursorPosition.current.x,
-        y: cursorPosition.current.y,
+        x: e.clientX,
+        y: e.clientY,
         duration: 0.2,
         ease: 'power2.out',
       });
-
-      rafId = requestAnimationFrame(updateCursor);
     };
 
-    // Hover detection
-    const handleMouseEnter = () => setIsHovering(true);
-    const handleMouseLeave = () => setIsHovering(false);
+    let isHovering = false;
+    let isClicking = false;
 
-    // Click detection
-    const handleMouseDown = () => setIsClicking(true);
-    const handleMouseUp = () => setIsClicking(false);
+    const updateScale = () => {
+      const targetScale = isClicking ? 0.75 : isHovering ? 1.5 : 1;
+      gsap.to(cursor, {
+        scale: targetScale,
+        duration: 0.2,
+        ease: 'power2.out',
+      });
+    };
 
-    // Find all interactive elements
-    const interactiveElements = document.querySelectorAll('a, button, [role="button"], input, textarea, select');
+    const handleMouseDown = () => {
+      isClicking = true;
+      updateScale();
+    };
+
+    const handleMouseUp = () => {
+      isClicking = false;
+      updateScale();
+    };
+
+    const interactiveSelector = 'a, button, [role="button"], input, textarea, select';
+    const interactiveElements = Array.from(document.querySelectorAll(interactiveSelector));
+
+    const hoverHandlers: Array<{ el: Element; enter: () => void; leave: () => void }> = [];
+
     interactiveElements.forEach((el) => {
-      el.addEventListener('mouseenter', handleMouseEnter);
-      el.addEventListener('mouseleave', handleMouseLeave);
+      const enter = () => {
+        isHovering = true;
+        updateScale();
+      };
+      const leave = () => {
+        isHovering = false;
+        updateScale();
+      };
+      el.addEventListener('mouseenter', enter);
+      el.addEventListener('mouseleave', leave);
+      hoverHandlers.push({ el, enter, leave });
     });
 
-    // Global mouse events
-    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousemove', moveHandler);
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
 
-    // Initialize cursor position
-    cursorPosition.current = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-    gsap.set(cursor, { x: cursorPosition.current.x, y: cursorPosition.current.y });
-
-    // Start animation loop
-    rafId = requestAnimationFrame(updateCursor);
-
-    // Scale animation based on state
-    const scaleTween = gsap.to(cursor, {
-      scale: isClicking ? 0.75 : isHovering ? 1.5 : 1,
-      duration: 0.2,
-      ease: 'power2.out',
-    });
-
-    // Watch for state changes
-    const stateWatcher = () => {
-      gsap.to(cursor, {
-        scale: isClicking ? 0.75 : isHovering ? 1.5 : 1,
-        duration: 0.2,
-        ease: 'power2.out',
-      });
-    };
-
-    const intervalId = setInterval(stateWatcher, 50);
-
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mousemove', moveHandler);
       window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);
-      interactiveElements.forEach((el) => {
-        el.removeEventListener('mouseenter', handleMouseEnter);
-        el.removeEventListener('mouseleave', handleMouseLeave);
+      hoverHandlers.forEach(({ el, enter, leave }) => {
+        el.removeEventListener('mouseenter', enter);
+        el.removeEventListener('mouseleave', leave);
       });
-      cancelAnimationFrame(rafId);
-      clearInterval(intervalId);
-      scaleTween.kill();
+      gsap.killTweensOf(cursor);
     };
-  }, [isHovering, isClicking]);
+  }, []);
 
-  // Hide on mobile
-  if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-    return null;
-  }
-
-  return (
-    <div
-      ref={cursorRef}
-      className="fixed top-0 left-0 w-6 h-6 rounded-full bg-white pointer-events-none z-[10000] mix-blend-difference opacity-80"
-      style={{
-        willChange: 'transform',
-        transform: 'translate(-50%, -50%)',
-      }}
-    />
-  );
+  return <div ref={cursorRef} className="custom-cursor" />;
 }

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import StarLetterAnimation from '@/components/animations/StarLetterAnimation';
 
 /**
@@ -14,7 +15,7 @@ import StarLetterAnimation from '@/components/animations/StarLetterAnimation';
  * 
  * Requirements:
  * - Brand/Logo: "CHRIS COLE" (h6 heading)
- * - Navigation items: WORK, ABOUT, CONTACT, SKETCHES (h1 headings)
+ * - Navigation items: WORK, ABOUT, SKETCHES (h1 headings)
  * - Fixed position on scroll
  * - Background changes on scroll (transparent → semi-transparent with blur)
  * - Active section highlighting works
@@ -26,27 +27,13 @@ import StarLetterAnimation from '@/components/animations/StarLetterAnimation';
  */
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [activeSection, setActiveSection] = useState('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
-      
-      // Update active section based on scroll position
-      const sections = ['home', 'work', 'about', 'contact', 'sketches'];
-      const currentSection = sections.find(section => {
-        const element = document.getElementById(section);
-        if (element) {
-          const rect = element.getBoundingClientRect();
-          return rect.top <= 100 && rect.bottom >= 100;
-        }
-        return false;
-      });
-      
-      if (currentSection) {
-        setActiveSection(currentSection);
-      }
     };
 
     window.addEventListener('scroll', handleScroll);
@@ -55,20 +42,22 @@ export default function Navbar() {
 
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
-  const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-    setIsMobileMenuOpen(false);
-  };
+  const navItems = useMemo(
+    () => [
+      { name: 'Home', href: '/', letter: 'H' },
+      { name: 'Birth Chart', href: '/birth-chart', letter: 'B' },
+      { name: 'Birth Time Rectification', href: '/birth-time-rectification', letter: 'B2' },
+      { name: 'Comprehensive Analysis', href: '/comprehensive-analysis', letter: 'C' },
+    ],
+    []
+  );
 
-  const navItems = [
-    { name: 'WORK', id: 'work', letter: 'W' },
-    { name: 'ABOUT', id: 'about', letter: 'A' },
-    { name: 'CONTACT', id: 'contact', letter: 'C' },
-    { name: 'SKETCHES', id: 'sketches', letter: 'S' },
-  ];
+  const isActivePath = (href: string) => {
+    if (href === '/') {
+      return pathname === '/';
+    }
+    return pathname?.startsWith(href);
+  };
 
   return (
     <nav
@@ -80,7 +69,7 @@ export default function Navbar() {
         {/* Brand/Logo - h6 heading (matches original structure) */}
         <h6 className="text-xl font-bold tracking-tight">
           <Link href="/" className="hover:text-gray-200 transition-colors">
-            CHRIS COLE
+            JYOTISH SHASTRA
           </Link>
         </h6>
         
@@ -88,18 +77,18 @@ export default function Navbar() {
         <ul className="hidden md:flex space-x-8 text-sm font-mono uppercase">
           {navItems.map((item) => (
             <li 
-              key={item.id}
-              onMouseEnter={() => setHoveredItem(item.id)}
+              key={item.href}
+              onMouseEnter={() => setHoveredItem(item.href)}
               onMouseLeave={() => setHoveredItem(null)}
             >
               <StarLetterAnimation
                 letter={item.letter}
-                label={item.name}
-                isHovered={hoveredItem === item.id}
-                isActive={activeSection === item.id}
-                onClick={() => scrollToSection(item.id)}
+                label={item.name.toUpperCase()}
+                isHovered={hoveredItem === item.href}
+                isActive={isActivePath(item.href)}
+                onClick={() => router.push(item.href)}
               />
-              {activeSection === item.id && (
+              {isActivePath(item.href) && (
                 <span className="absolute -bottom-1 left-0 right-0 h-px bg-white"></span>
               )}
             </li>
@@ -127,16 +116,17 @@ export default function Navbar() {
         <div className="md:hidden bg-black/95 backdrop-blur-md border-t border-gray-800">
           <ul className="px-6 py-4 space-y-4">
             {navItems.map((item) => (
-              <li key={item.id}>
+              <li key={item.href}>
                 <h1>
-                  <button
-                    onClick={() => scrollToSection(item.id)}
-                    className={`text-left w-full hover:text-gray-200 transition-colors ${
-                      activeSection === item.id ? 'text-white' : 'text-gray-300'
+                  <Link
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`text-left w-full block hover:text-gray-200 transition-colors ${
+                      isActivePath(item.href) ? 'text-white' : 'text-gray-300'
                     }`}
                   >
                     {item.name}
-                  </button>
+                  </Link>
                 </h1>
               </li>
             ))}

@@ -35,12 +35,13 @@ import { motion } from 'framer-motion';
 import { useScrollTrigger } from '@/animations/scrollTrigger';
 import EmailCopyButton from '@/components/ui/EmailCopyButton';
 import ParallaxStars from '@/components/animations/ParallaxStars';
+import CometAnimation from '@/components/animations/CometAnimation';
 
 const ContactSection: React.FC = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const { controls } = useScrollTrigger(sectionRef);
 
-  const email = 'hello@chriscole.com';
+  const email = 'hello@jyotishshastra.com';
   const socialLinks = [
     { name: 'LinkedIn', url: 'https://linkedin.com', icon: '🔗' },
     { name: 'Twitter', url: 'https://twitter.com', icon: '🐦' },
@@ -49,9 +50,10 @@ const ContactSection: React.FC = () => {
 
   return (
     <section ref={sectionRef} id="contact" className="relative section-container py-20 md:py-32 min-h-screen flex items-center justify-center bg-black">
-      {/* Starry Background with Parallax */}
-      <div className="absolute inset-0 overflow-hidden">
+      {/* Starry Background with Parallax + 3D Comet */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <ParallaxStars />
+        <CometAnimation className="w-full h-full" />
       </div>
 
       <motion.div
